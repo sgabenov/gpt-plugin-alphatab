@@ -3,6 +3,7 @@ import {
   ALPHATAB_VERSION,
   buildAssetUrls,
   buildUiHtml,
+  buildPreviewCsp,
   UI_RESOURCE_URI
 } from "../src/ui-resource.js";
 
@@ -33,5 +34,15 @@ describe("the MCP Apps UI resource", () => {
     expect(standardHtml).not.toContain("__ALPHATAB_PREVIEW_SCORE__");
     expect(previewHtml).toContain("__ALPHATAB_PREVIEW_SCORE__");
     expect(previewHtml).toContain("Preview \\u003c/script> score");
+  });
+
+  it("builds a restrictive preview CSP for local alphaTab resources", () => {
+    const csp = buildPreviewCsp("http://127.0.0.1:9000");
+
+    expect(csp).toContain("default-src 'none'");
+    expect(csp).toContain("script-src 'unsafe-inline' http://127.0.0.1:9000");
+    expect(csp).toContain("worker-src http://127.0.0.1:9000 blob:");
+    expect(csp).toContain("font-src http://127.0.0.1:9000");
+    expect(csp).not.toContain("https://cdn.jsdelivr.net");
   });
 });

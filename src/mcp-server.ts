@@ -3,6 +3,12 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { DEMO_SCORE, summarizeDemoScore } from "./demo-score.js";
 import {
+  DEMO_GP_DOWNLOAD_ROUTE,
+  DEMO_GP_FILENAME,
+  exportDemoGp,
+  GP_MIME_TYPE
+} from "./gp-export.js";
+import {
   buildAssetUrls,
   buildUiHtml,
   loadUiBundle,
@@ -81,6 +87,49 @@ export function createAlphaTabMcpServer(options: AlphaTabServerOptions = {}): Mc
       }
     },
     async () => demoScoreResult()
+  );
+
+  server.registerTool(
+    "export_demo_gp",
+    {
+      title: "Export the alphaTab demo as Guitar Pro",
+      description: "Generate a Guitar Pro 7+ .gp file from the known Phase 0 score and return a download link.",
+      inputSchema: {},
+      outputSchema: {
+        filename: z.string(),
+        mimeType: z.string(),
+        downloadUrl: z.string().url(),
+        bytes: z.number().int().positive()
+      },
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false
+      }
+    },
+    async () => {
+      const bytes = exportDemoGp();
+      const downloadUrl = new URL(DEMO_GP_DOWNLOAD_ROUTE, assetOrigin).href;
+      return {
+        structuredContent: {
+          filename: DEMO_GP_FILENAME,
+          mimeType: GP_MIME_TYPE,
+          downloadUrl,
+          bytes: bytes.byteLength
+        },
+        content: [
+          {
+            type: "resource_link" as const,
+            uri: downloadUrl,
+            name: DEMO_GP_FILENAME,
+            description: "Guitar Pro 7+ file generated from the deterministic Phase 0 score.",
+            mimeType: GP_MIME_TYPE,
+            size: bytes.byteLength
+          }
+        ]
+      };
+    }
   );
 
   registerAppResource(

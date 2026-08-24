@@ -23,6 +23,20 @@ export function buildAssetUrls(assetBaseUrl: string): AlphaTabAssetUrls {
   };
 }
 
+export function buildPreviewCsp(assetBaseUrl: string): string {
+  const { origin } = buildAssetUrls(assetBaseUrl);
+  return [
+    "default-src 'none'",
+    `script-src 'unsafe-inline' ${origin}`,
+    "style-src 'unsafe-inline'",
+    `font-src ${origin}`,
+    `connect-src ${origin}`,
+    `worker-src ${origin} blob:`,
+    `media-src ${origin} blob:`,
+    `img-src ${origin} data: blob:`
+  ].join("; ");
+}
+
 function escapeInlineModule(source: string): string {
   return source.replaceAll("</script", "<\\/script");
 }

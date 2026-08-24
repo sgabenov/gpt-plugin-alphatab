@@ -30,9 +30,33 @@ describe("the Phase 0 MCP server", () => {
     const client = await connect();
     const tools = await client.listTools();
 
-    expect(tools.tools.map((tool) => tool.name)).toEqual(["get_demo_score", "render_demo_score"]);
+    expect(tools.tools.map((tool) => tool.name)).toEqual([
+      "get_demo_score",
+      "render_demo_score",
+      "export_demo_gp"
+    ]);
     const renderTool = tools.tools.find((tool) => tool.name === "render_demo_score");
     expect(renderTool?._meta?.ui).toEqual({ resourceUri: UI_RESOURCE_URI });
+  });
+
+  it("returns the demo Guitar Pro file as an MCP resource link", async () => {
+    const client = await connect();
+    const result = await client.callTool({ name: "export_demo_gp", arguments: {} });
+
+    expect(result.isError).not.toBe(true);
+    expect(result.structuredContent).toMatchObject({
+      filename: "phase-0-drop-d-riff.gp",
+      mimeType: "application/octet-stream",
+      downloadUrl: "http://127.0.0.1:8787/downloads/phase-0-drop-d-riff.gp"
+    });
+    expect(result.content).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "resource_link",
+          name: "phase-0-drop-d-riff.gp"
+        })
+      ])
+    );
   });
 
   it("returns model-readable demo score data", async () => {

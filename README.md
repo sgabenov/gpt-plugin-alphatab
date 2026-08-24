@@ -49,6 +49,13 @@ Open `http://localhost:8787/preview` to run the same score component with the de
 
 The recorded Phase 0 browser results are available in [`docs/phase-0-rendering-playback-spike.md`](docs/phase-0-rendering-playback-spike.md).
 
+Runtime constraints and the pinned support matrix are documented in:
+
+- [`docs/phase-0-runtime-constraints.md`](docs/phase-0-runtime-constraints.md)
+- [`docs/alphatab-compatibility-matrix.md`](docs/alphatab-compatibility-matrix.md)
+
+The `export_demo_gp` MCP tool returns the deterministic Phase 0 Guitar Pro file as a resource link. The same file is available from `/downloads/phase-0-drop-d-riff.gp` while the local server is running.
+
 Run the stdio transport used by the local plugin configuration:
 
 ```bash

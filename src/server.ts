@@ -3,11 +3,18 @@ import { resolve } from "node:path";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { DEMO_SCORE } from "./demo-score.js";
+import {
+  DEMO_GP_DOWNLOAD_ROUTE,
+  DEMO_GP_FILENAME,
+  exportDemoGp,
+  GP_MIME_TYPE
+} from "./gp-export.js";
 import { createAlphaTabMcpServer } from "./mcp-server.js";
 import {
   ALPHATAB_ASSET_ROUTE,
   ALPHATAB_VERSION,
   buildUiHtml,
+  buildPreviewCsp,
   loadUiBundle
 } from "./ui-resource.js";
 
@@ -38,7 +45,18 @@ function addAssetRoutes(app: express.Express): void {
 function addPreviewRoute(app: express.Express, assets: string): void {
   app.get("/preview", (_request, response) => {
     response.setHeader("Cache-Control", "no-store");
+    response.setHeader("Content-Security-Policy", buildPreviewCsp(assets));
     response.type("html").send(buildUiHtml(loadUiBundle(), assets, DEMO_SCORE));
+  });
+}
+
+function addDownloadRoutes(app: express.Express): void {
+  app.get(DEMO_GP_DOWNLOAD_ROUTE, (_request, response) => {
+    const bytes = exportDemoGp();
+    response.setHeader("Content-Type", GP_MIME_TYPE);
+    response.setHeader("Content-Disposition", `attachment; filename="${DEMO_GP_FILENAME}"`);
+    response.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    response.send(Buffer.from(bytes));
   });
 }
 
@@ -53,6 +71,7 @@ async function runStdio(): Promise<void> {
   const app = express();
   addAssetRoutes(app);
   addPreviewRoute(app, assetBaseUrl(port));
+  addDownloadRoutes(app);
   listen(app, port, "alphaTab local asset server");
 
   const server = createAlphaTabMcpServer({ assetBaseUrl: assetBaseUrl(port) });
@@ -66,6 +85,7 @@ async function runHttp(): Promise<void> {
   app.use(express.json({ limit: "1mb" }));
   addAssetRoutes(app);
   addPreviewRoute(app, assets);
+  addDownloadRoutes(app);
 
   const mcpPath = process.env.MCP_PATH ?? DEFAULT_MCP_PATH;
 

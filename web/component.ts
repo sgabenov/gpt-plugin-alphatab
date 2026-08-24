@@ -14,6 +14,11 @@ interface ScorePayload {
 
 interface AlphaTabNamespace {
   AlphaTabApi: typeof AlphaTabApiType;
+  exporter: {
+    Gp7Exporter: new () => {
+      export(score: AlphaTabApiType["score"], settings?: AlphaTabApiType["settings"] | null): Uint8Array;
+    };
+  };
 }
 
 interface AlphaTabAssets {
@@ -23,11 +28,18 @@ interface AlphaTabAssets {
   soundFontUrl: string;
 }
 
+interface OpenAiFileBridge {
+  uploadFile?: (file: File, options?: { library?: boolean }) => Promise<{ fileId: string }>;
+  getFileDownloadUrl?: (input: { fileId: string }) => Promise<{ downloadUrl: string }>;
+  openExternal?: (input: { href: string; redirectUrl?: boolean }) => Promise<void>;
+}
+
 declare global {
   interface Window {
     alphaTab?: AlphaTabNamespace;
     __ALPHATAB_ASSETS__?: AlphaTabAssets;
     __ALPHATAB_PREVIEW_SCORE__?: unknown;
+    openai?: OpenAiFileBridge;
   }
 }
 
@@ -78,6 +90,7 @@ root.innerHTML = `
     <div class="controls" aria-label="Playback controls">
       <button type="button" data-action="play" disabled>Play / Pause</button>
       <button type="button" data-action="stop" disabled>Stop</button>
+      <button type="button" data-action="export-gp" disabled>Export GP</button>
     </div>
     <div class="viewport">
       <div class="score" aria-label="Rendered music notation"></div>
@@ -91,8 +104,10 @@ const scoreElement = root.querySelector<HTMLElement>(".score")!;
 const viewport = root.querySelector<HTMLElement>(".viewport")!;
 const playButton = root.querySelector<HTMLButtonElement>("[data-action=play]")!;
 const stopButton = root.querySelector<HTMLButtonElement>("[data-action=stop]")!;
+const exportGpButton = root.querySelector<HTMLButtonElement>("[data-action=export-gp]")!;
 
 let alphaTabApi: AlphaTabApiType | undefined;
+let isPlayerReady = false;
 
 function setStatus(message: string): void {
   status.textContent = message;
@@ -114,8 +129,10 @@ function isScorePayload(value: unknown): value is ScorePayload {
 }
 
 function destroyAlphaTab(): void {
+  isPlayerReady = false;
   playButton.disabled = true;
   stopButton.disabled = true;
+  exportGpButton.disabled = true;
   if (alphaTabApi) {
     alphaTabApi.destroy();
     alphaTabApi = undefined;
@@ -156,14 +173,18 @@ function renderScore(payload: ScorePayload): void {
   });
 
   alphaTabApi = api;
-  api.renderFinished.on(() => setStatus("Loading player…"));
+  api.renderFinished.on(() => {
+    if (!isPlayerReady) setStatus("Loading player…");
+  });
   api.soundFontLoad.on((event) => {
     const percentage = event.total > 0 ? Math.floor((event.loaded / event.total) * 100) : 0;
     setStatus(`Loading sounds: ${percentage}%`);
   });
   api.playerReady.on(() => {
+    isPlayerReady = true;
     playButton.disabled = false;
     stopButton.disabled = false;
+    exportGpButton.disabled = false;
     setStatus("Ready");
   });
   api.error.on((error) => {
@@ -175,6 +196,59 @@ function renderScore(payload: ScorePayload): void {
 
 playButton.addEventListener("click", () => alphaTabApi?.playPause());
 stopButton.addEventListener("click", () => alphaTabApi?.stop());
+
+function downloadBlob(file: File): void {
+  const url = URL.createObjectURL(file);
+  const anchor = document.createElement("a");
+  anchor.download = file.name;
+  anchor.href = url;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+exportGpButton.addEventListener("click", async () => {
+  if (!alphaTabApi || !window.alphaTab) return;
+
+  exportGpButton.disabled = true;
+  setStatus("Exporting Guitar Pro file…");
+
+  const bytes = new window.alphaTab.exporter.Gp7Exporter().export(
+    alphaTabApi.score,
+    alphaTabApi.settings
+  );
+  const fileBytes = Uint8Array.from(bytes);
+  const file = new File([fileBytes.buffer], "phase-0-drop-d-riff.gp", {
+    type: "application/octet-stream"
+  });
+
+  try {
+    const host = window.openai;
+    if (host?.uploadFile && host.getFileDownloadUrl) {
+      const { fileId } = await host.uploadFile(file);
+      const { downloadUrl } = await host.getFileDownloadUrl({ fileId });
+      if (host.openExternal) {
+        await host.openExternal({ href: downloadUrl, redirectUrl: false });
+      } else {
+        const anchor = document.createElement("a");
+        anchor.href = downloadUrl;
+        anchor.download = file.name;
+        anchor.click();
+      }
+    } else {
+      downloadBlob(file);
+    }
+    setStatus("Guitar Pro file ready");
+  } catch (error) {
+    console.warn("ChatGPT file bridge unavailable; using browser download", error);
+    downloadBlob(file);
+    setStatus("Guitar Pro file ready");
+  } finally {
+    exportGpButton.disabled = false;
+  }
+});
+
 window.addEventListener("beforeunload", destroyAlphaTab, { once: true });
 window.addEventListener("pagehide", destroyAlphaTab, { once: true });
 
