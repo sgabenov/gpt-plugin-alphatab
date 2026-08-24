@@ -28,6 +28,11 @@ describe("the production score component", () => {
   it("uses the inline alphaTab runtime without a rendering worker", () => {
     expect(component).toContain("new window.alphaTab.AlphaTabApi");
     expect(component).toContain("useWorkers: false");
+    expect(component).toContain("alphaTabRuntimeBase64");
+    expect(component).toContain("smuflFontWoff2Base64");
+    expect(component).toContain("soundFontBase64");
+    expect(component).toContain("WebAudioAudioWorklets");
+    expect(component).toContain("loadSoundFont(base64ToBytes");
   });
 
   it("labels interactive controls for assistive technology", () => {

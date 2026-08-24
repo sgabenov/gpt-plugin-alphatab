@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-export const UI_RESOURCE_URI = "ui://alphatab/score-viewer-v2.html";
+export const UI_RESOURCE_URI = "ui://alphatab/score-viewer-v3.html";
 export const ALPHATAB_VERSION = "1.8.4";
 export const ALPHATAB_ASSET_ROUTE = `/assets/alphatab/${ALPHATAB_VERSION}`;
 
@@ -10,6 +10,11 @@ export interface AlphaTabAssetUrls {
   runtimeUrl: string;
   fontDirectory: string;
   soundFontUrl: string;
+}
+
+export interface AlphaTabEmbeddedAssets {
+  smuflFontWoff2Base64: string;
+  soundFontBase64: string;
 }
 
 export function buildAssetUrls(assetBaseUrl: string): AlphaTabAssetUrls {
@@ -27,11 +32,11 @@ export function buildPreviewCsp(assetBaseUrl: string): string {
   const { origin } = buildAssetUrls(assetBaseUrl);
   return [
     "default-src 'none'",
-    "script-src 'unsafe-inline'",
+    "script-src 'unsafe-inline' blob: data:",
     "style-src 'unsafe-inline'",
-    `font-src ${origin}`,
+    `font-src ${origin} blob:`,
     `connect-src ${origin}`,
-    `worker-src ${origin} blob:`,
+    `worker-src ${origin} blob: data:`,
     `media-src ${origin} blob:`,
     `img-src ${origin} data: blob:`
   ].join("; ");
@@ -56,13 +61,28 @@ export function loadAlphaTabRuntime(cwd = process.cwd()): string {
   );
 }
 
+export function loadAlphaTabEmbeddedAssets(cwd = process.cwd()): AlphaTabEmbeddedAssets {
+  const assetRoot = resolve(cwd, "vendor", "alphatab", ALPHATAB_VERSION);
+  const smuflFont = readFileSync(resolve(assetRoot, "font", "Bravura.woff2"));
+  const soundFont = readFileSync(resolve(assetRoot, "soundfont", "sonivox.sf2"));
+  return {
+    smuflFontWoff2Base64: smuflFont.toString("base64"),
+    soundFontBase64: soundFont.toString("base64")
+  };
+}
+
 export function buildUiHtml(
   uiBundle: string,
   assetBaseUrl = "http://127.0.0.1:8787",
   previewScore?: unknown,
-  alphaTabRuntime = loadAlphaTabRuntime()
+  alphaTabRuntime = loadAlphaTabRuntime(),
+  embeddedAssets = loadAlphaTabEmbeddedAssets()
 ): string {
-  const assets = buildAssetUrls(assetBaseUrl);
+  const assets = {
+    ...buildAssetUrls(assetBaseUrl),
+    ...embeddedAssets,
+    alphaTabRuntimeBase64: Buffer.from(alphaTabRuntime).toString("base64")
+  };
   const previewScript = previewScore
     ? `<script>window.__ALPHATAB_PREVIEW_SCORE__ = ${serializeInlineData(previewScore)};</script>`
     : "";

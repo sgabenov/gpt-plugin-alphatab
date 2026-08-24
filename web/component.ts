@@ -15,6 +15,12 @@ interface ScorePayload {
 
 interface AlphaTabNamespace {
   AlphaTabApi: typeof AlphaTabApiType;
+  FontFileFormat: {
+    Woff2: number;
+  };
+  PlayerOutputMode: {
+    WebAudioAudioWorklets: number;
+  };
   exporter: {
     Gp7Exporter: new () => {
       export(score: NonNullable<AlphaTabApiType["score"]>, settings?: AlphaTabApiType["settings"] | null): Uint8Array;
@@ -27,6 +33,9 @@ interface AlphaTabAssets {
   runtimeUrl: string;
   fontDirectory: string;
   soundFontUrl: string;
+  alphaTabRuntimeBase64: string;
+  smuflFontWoff2Base64: string;
+  soundFontBase64: string;
 }
 
 interface OpenAiFileBridge {
@@ -142,12 +151,15 @@ const fullscreenButton = root.querySelector<HTMLButtonElement>("[data-action=ful
 let alphaTabApi: AlphaTabApiType | undefined;
 let appBridge: App | undefined;
 let isPlayerReady = false;
+let isSoundFontLoading = false;
 let currentPayload: ScorePayload | undefined;
 let playbackEndTime = 0;
 let isSeeking = false;
 let selectedTrackIndex = 0;
 let isMuted = false;
 let isSolo = false;
+let runtimeObjectUrl: string | undefined;
+let fontObjectUrl: string | undefined;
 
 function setStatus(message: string): void {
   status.textContent = message;
@@ -170,6 +182,7 @@ function isScorePayload(value: unknown): value is ScorePayload {
 
 function destroyAlphaTab(): void {
   isPlayerReady = false;
+  isSoundFontLoading = false;
   playButton.disabled = true;
   stopButton.disabled = true;
   exportGpButton.disabled = true;
@@ -179,6 +192,13 @@ function destroyAlphaTab(): void {
   if (alphaTabApi) {
     alphaTabApi.destroy();
     alphaTabApi = undefined;
+  }
+  if (runtimeObjectUrl) {
+    runtimeObjectUrl = undefined;
+  }
+  if (fontObjectUrl) {
+    URL.revokeObjectURL(fontObjectUrl);
+    fontObjectUrl = undefined;
   }
   scoreElement.replaceChildren();
 }
@@ -202,10 +222,19 @@ function renderScore(payload: ScorePayload): void {
   meta.textContent = `${payload.bars} bars · ${payload.timeSignature} · ${payload.tempo} BPM · ${payload.tuning.join(" ")}`;
   setStatus("Rendering score…");
 
+  runtimeObjectUrl = `data:application/javascript;base64,${assets.alphaTabRuntimeBase64}`;
+  fontObjectUrl = URL.createObjectURL(new Blob(
+    [base64ToBytes(assets.smuflFontWoff2Base64)],
+    { type: "font/woff2" }
+  ));
+
   const api = new window.alphaTab.AlphaTabApi(scoreElement, {
     core: {
-      scriptFile: assets.runtimeUrl,
-      fontDirectory: assets.fontDirectory,
+      scriptFile: runtimeObjectUrl,
+      fontDirectory: null,
+      smuflFontSources: new Map([
+        [window.alphaTab.FontFileFormat.Woff2, fontObjectUrl]
+      ]),
       useWorkers: false
     },
     display: {
@@ -215,7 +244,8 @@ function renderScore(payload: ScorePayload): void {
       enablePlayer: true,
       enableCursor: true,
       enableElementHighlighting: true,
-      soundFont: assets.soundFontUrl,
+      soundFont: null,
+      outputMode: window.alphaTab.PlayerOutputMode.WebAudioAudioWorklets,
       scrollElement: viewport
     }
   });
@@ -239,6 +269,10 @@ function renderScore(payload: ScorePayload): void {
     api.masterVolume = Number(volumeInput.value) / 100;
     setStatus("Ready");
   });
+  api.soundFontLoaded.on(() => {
+    isSoundFontLoading = false;
+    if (!isPlayerReady) setStatus("Loading player…");
+  });
   api.scoreLoaded.on((score) => {
     trackSelect.replaceChildren();
     for (const track of score.tracks) {
@@ -251,6 +285,14 @@ function renderScore(payload: ScorePayload): void {
   });
   api.midiLoaded.on((event) => {
     playbackEndTime = event.endTime;
+    if (!isSoundFontLoading && !isPlayerReady) {
+      isSoundFontLoading = true;
+      setStatus("Loading sounds…");
+      if (!api.loadSoundFont(base64ToBytes(assets.soundFontBase64))) {
+        isSoundFontLoading = false;
+        setStatus("Unable to initialize sounds");
+      }
+    }
   });
   api.playerStateChanged.on((event) => {
     playButton.textContent = event.state === 1 ? "Pause" : "Play";
@@ -405,6 +447,15 @@ function bytesToBase64(bytes: Uint8Array): string {
     binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
   }
   return btoa(binary);
+}
+
+function base64ToBytes(value: string): Uint8Array<ArrayBuffer> {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes;
 }
 
 exportGpButton.addEventListener("click", async () => {
