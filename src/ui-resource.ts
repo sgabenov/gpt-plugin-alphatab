@@ -35,8 +35,15 @@ export function loadUiBundle(cwd = process.cwd()): string {
   return readFileSync(resolve(cwd, "dist/ui/component.js"), "utf8");
 }
 
-export function buildUiHtml(uiBundle: string, assetBaseUrl = "http://127.0.0.1:8787"): string {
+export function buildUiHtml(
+  uiBundle: string,
+  assetBaseUrl = "http://127.0.0.1:8787",
+  previewScore?: unknown
+): string {
   const assets = buildAssetUrls(assetBaseUrl);
+  const previewScript = previewScore
+    ? `<script>window.__ALPHATAB_PREVIEW_SCORE__ = ${serializeInlineData(previewScore)};</script>`
+    : "";
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -47,6 +54,7 @@ export function buildUiHtml(uiBundle: string, assetBaseUrl = "http://127.0.0.1:8
   <body>
     <div id="app"></div>
     <script>window.__ALPHATAB_ASSETS__ = ${serializeInlineData(assets)};</script>
+    ${previewScript}
     <script src="${assets.runtimeUrl}"></script>
     <script type="module">${escapeInlineModule(uiBundle)}</script>
   </body>

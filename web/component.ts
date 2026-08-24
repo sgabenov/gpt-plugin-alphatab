@@ -27,6 +27,7 @@ declare global {
   interface Window {
     alphaTab?: AlphaTabNamespace;
     __ALPHATAB_ASSETS__?: AlphaTabAssets;
+    __ALPHATAB_PREVIEW_SCORE__?: unknown;
   }
 }
 
@@ -175,20 +176,25 @@ function renderScore(payload: ScorePayload): void {
 playButton.addEventListener("click", () => alphaTabApi?.playPause());
 stopButton.addEventListener("click", () => alphaTabApi?.stop());
 window.addEventListener("beforeunload", destroyAlphaTab, { once: true });
+window.addEventListener("pagehide", destroyAlphaTab, { once: true });
 
-const app = new App({ name: "alphatab-score-viewer", version: "0.1.0" }, {}, { autoResize: true });
-app.addEventListener("toolresult", (result) => {
-  if (isScorePayload(result.structuredContent)) {
-    renderScore(result.structuredContent);
-  } else {
-    setStatus("Invalid score data");
+if (isScorePayload(window.__ALPHATAB_PREVIEW_SCORE__)) {
+  renderScore(window.__ALPHATAB_PREVIEW_SCORE__);
+} else {
+  const app = new App({ name: "alphatab-score-viewer", version: "0.1.0" }, {}, { autoResize: true });
+  app.addEventListener("toolresult", (result) => {
+    if (isScorePayload(result.structuredContent)) {
+      renderScore(result.structuredContent);
+    } else {
+      setStatus("Invalid score data");
+    }
+  });
+
+  try {
+    await app.connect();
+    setStatus("Waiting for score…");
+  } catch (error) {
+    console.error("MCP Apps connection failed", error);
+    setStatus("Host connection failed");
   }
-});
-
-try {
-  await app.connect();
-  setStatus("Waiting for score…");
-} catch (error) {
-  console.error("MCP Apps connection failed", error);
-  setStatus("Host connection failed");
 }

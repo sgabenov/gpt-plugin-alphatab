@@ -45,6 +45,10 @@ npm run dev
 
 The endpoint defaults to `http://localhost:8787/mcp`.
 
+Open `http://localhost:8787/preview` to run the same score component with the deterministic Phase 0 fixture outside an MCP host. This route is intended for local rendering and playback smoke tests.
+
+The recorded Phase 0 browser results are available in [`docs/phase-0-rendering-playback-spike.md`](docs/phase-0-rendering-playback-spike.md).
+
 Run the stdio transport used by the local plugin configuration:
 
 ```bash

@@ -2,8 +2,14 @@ import express, { type Request, type Response } from "express";
 import { resolve } from "node:path";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { DEMO_SCORE } from "./demo-score.js";
 import { createAlphaTabMcpServer } from "./mcp-server.js";
-import { ALPHATAB_ASSET_ROUTE, ALPHATAB_VERSION } from "./ui-resource.js";
+import {
+  ALPHATAB_ASSET_ROUTE,
+  ALPHATAB_VERSION,
+  buildUiHtml,
+  loadUiBundle
+} from "./ui-resource.js";
 
 const DEFAULT_PORT = 8787;
 const DEFAULT_MCP_PATH = "/mcp";
@@ -29,6 +35,13 @@ function addAssetRoutes(app: express.Express): void {
   );
 }
 
+function addPreviewRoute(app: express.Express, assets: string): void {
+  app.get("/preview", (_request, response) => {
+    response.setHeader("Cache-Control", "no-store");
+    response.type("html").send(buildUiHtml(loadUiBundle(), assets, DEMO_SCORE));
+  });
+}
+
 function listen(app: express.Express, port: number, label: string): void {
   app.listen(port, "127.0.0.1", () => {
     console.error(`${label} listening at http://127.0.0.1:${port}`);
@@ -39,6 +52,7 @@ async function runStdio(): Promise<void> {
   const port = configuredPort();
   const app = express();
   addAssetRoutes(app);
+  addPreviewRoute(app, assetBaseUrl(port));
   listen(app, port, "alphaTab local asset server");
 
   const server = createAlphaTabMcpServer({ assetBaseUrl: assetBaseUrl(port) });
@@ -51,6 +65,7 @@ async function runHttp(): Promise<void> {
   const app = express();
   app.use(express.json({ limit: "1mb" }));
   addAssetRoutes(app);
+  addPreviewRoute(app, assets);
 
   const mcpPath = process.env.MCP_PATH ?? DEFAULT_MCP_PATH;
 

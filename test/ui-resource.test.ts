@@ -23,4 +23,15 @@ describe("the MCP Apps UI resource", () => {
     expect(html).toContain("http://127.0.0.1:9000/assets/alphatab/1.8.4/runtime/alphaTab.min.js");
     expect(html).not.toContain("cdn.jsdelivr.net");
   });
+
+  it("injects preview score data only when requested", () => {
+    const standardHtml = buildUiHtml("", "http://127.0.0.1:9000");
+    const previewHtml = buildUiHtml("", "http://127.0.0.1:9000", {
+      title: "Preview </script> score"
+    });
+
+    expect(standardHtml).not.toContain("__ALPHATAB_PREVIEW_SCORE__");
+    expect(previewHtml).toContain("__ALPHATAB_PREVIEW_SCORE__");
+    expect(previewHtml).toContain("Preview \\u003c/script> score");
+  });
 });
