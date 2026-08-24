@@ -1,6 +1,6 @@
 {
   "name": "gpt-plugin-alphatab",
-  "version": "0.1.0+codex.20260824131844",
+  "version": "0.1.0+codex.20260824135848",
   "description": "Generate, render, and play music notation and guitar tablature with alphaTab.",
   "author": {
     "name": "sgabenov",
@@ -32,7 +32,9 @@
       "Show the alphaTab demo score and play it.",
       "Turn my musical idea into guitar tablature."
     ],
-    "brandColor": "#5B5BD6"
+    "brandColor": "#5B5BD6",
+    "composerIcon": "./assets/guitarpro-tab-composer.png",
+    "logo": "./assets/guitarpro-tab-composer.png"
   },
   "mcpServers": "./.mcp.json"
 }
