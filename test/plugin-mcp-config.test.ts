@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { accessSync, constants, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import {
@@ -14,6 +14,7 @@ interface McpConfig {
       command: string;
       args: string[];
       cwd: string;
+      env_vars: string[];
     };
   };
 }
@@ -25,12 +26,20 @@ describe("the packaged MCP configuration", () => {
     const server = config.mcpServers["guitarpro-tab-composer"];
 
     expect(server.cwd).toBe(".");
+    expect(server.command).toBe("./scripts/launch-guitarpro-tab-composer-mcp");
+    expect(server.env_vars).toContain("CODEX_MCP_NODE_PATH");
+    accessSync(resolve(pluginRoot, server.command), constants.X_OK);
 
     const transport = new StdioClientTransport({
-      command: server.command,
+      command: resolve(pluginRoot, server.command),
       args: server.args,
       cwd: resolve(pluginRoot, server.cwd),
-      env: { ...getDefaultEnvironment(), PORT: "0" },
+      env: {
+        ...getDefaultEnvironment(),
+        CODEX_MCP_NODE_PATH: process.execPath,
+        PATH: "/usr/bin:/bin",
+        PORT: "0"
+      },
       stderr: "pipe"
     });
     const client = new Client({ name: "plugin-config-smoke-test", version: "1.0.0" });
