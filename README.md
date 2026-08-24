@@ -4,7 +4,7 @@ An MCP-based ChatGPT Plugin for generating, rendering, playing, importing, and e
 
 ## Project status
 
-The project is in Phase 0, the technical-spike stage. The current implementation proves the plugin package, MCP server, MCP Apps UI boundary, and a known alphaTex score flow before the full `MusicScoreSpec` model is introduced.
+The project is in Phase 1, the headless-core stage. The implementation includes the plugin package, MCP server, MCP Apps UI boundary, the canonical `MusicScoreSpec` v1 contract, deterministic validation, and expiring versioned score sessions.
 
 ## Planned workflow
 
@@ -55,6 +55,15 @@ Runtime constraints and the pinned support matrix are documented in:
 - [`docs/alphatab-compatibility-matrix.md`](docs/alphatab-compatibility-matrix.md)
 
 The canonical Phase 1 score contract is documented in [`docs/music-score-spec-v1.md`](docs/music-score-spec-v1.md) and published as [`schemas/music-score-spec-v1.schema.json`](schemas/music-score-spec-v1.schema.json).
+
+The headless score workflow exposes four MCP tools:
+
+- `validate_score` validates a score without storing it.
+- `create_score` creates an expiring session with an opaque score ID and immutable version 1.
+- `get_score` reads the latest or a selected historical version.
+- `update_score` appends a version only when `expectedVersion` matches the current version and the stable MusicScoreSpec `id` is unchanged.
+
+Sessions default to a one-hour TTL. `create_score` accepts an explicit TTL from 60 seconds to 24 hours and returns the exact `expiresAt` timestamp. Updates do not silently extend the session lifetime. Storage is process-local in this phase, so restarting the MCP server clears all sessions.
 
 The `export_demo_gp` MCP tool returns the deterministic Phase 0 Guitar Pro file as a resource link. The same file is available from `/downloads/phase-0-drop-d-riff.gp` while the local server is running.
 

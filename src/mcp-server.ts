@@ -14,10 +14,13 @@ import {
   loadUiBundle,
   UI_RESOURCE_URI
 } from "./ui-resource.js";
+import { InMemoryScoreStore } from "./score-store.js";
+import { registerScoreTools } from "./score-tools.js";
 
 export interface AlphaTabServerOptions {
   uiBundle?: string;
   assetBaseUrl?: string;
+  scoreStore?: InMemoryScoreStore;
 }
 
 const demoScoreOutputSchema = {
@@ -45,9 +48,11 @@ export function createAlphaTabMcpServer(options: AlphaTabServerOptions = {}): Mc
     { name: "alphatab-composer", version: "0.1.0" },
     {
       instructions:
-        "Use get_demo_score for headless inspection. Use render_demo_score only when the user wants to see or play the score. The Phase 0 tools return a known alphaTex fixture."
+        "Use validate_score before persistence when the user only needs diagnostics. Use create_score, get_score, and update_score for expiring versioned MusicScoreSpec sessions. Use render_demo_score only when the user wants to see or play the Phase 0 demo score."
     }
   );
+
+  registerScoreTools(server, options.scoreStore ?? new InMemoryScoreStore());
 
   server.registerTool(
     "get_demo_score",

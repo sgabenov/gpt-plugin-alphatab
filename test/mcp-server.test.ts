@@ -1,7 +1,10 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { afterEach, describe, expect, it } from "vitest";
 import { createAlphaTabMcpServer } from "../src/mcp-server.js";
+import { InMemoryScoreStore } from "../src/score-store.js";
 import { UI_RESOURCE_URI } from "../src/ui-resource.js";
 
 describe("the Phase 0 MCP server", () => {
@@ -11,9 +14,12 @@ describe("the Phase 0 MCP server", () => {
     await Promise.all(closeCallbacks.splice(0).map((close) => close()));
   });
 
-  async function connect() {
+  async function connect(scoreStore?: InMemoryScoreStore) {
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
-    const server = createAlphaTabMcpServer({ uiBundle: 'console.log("test UI");' });
+    const server = createAlphaTabMcpServer({
+      uiBundle: 'console.log("test UI");',
+      scoreStore
+    });
     const client = new Client({ name: "alphatab-test-client", version: "0.1.0" });
 
     await server.connect(serverTransport);
@@ -31,12 +37,104 @@ describe("the Phase 0 MCP server", () => {
     const tools = await client.listTools();
 
     expect(tools.tools.map((tool) => tool.name)).toEqual([
+      "validate_score",
+      "create_score",
+      "get_score",
+      "update_score",
       "get_demo_score",
       "render_demo_score",
       "export_demo_gp"
     ]);
     const renderTool = tools.tools.find((tool) => tool.name === "render_demo_score");
     expect(renderTool?._meta?.ui).toEqual({ resourceUri: UI_RESOURCE_URI });
+    for (const name of ["validate_score", "create_score", "get_score", "update_score"]) {
+      const tool = tools.tools.find((candidate) => candidate.name === name);
+      expect(tool?.inputSchema.additionalProperties).toBe(false);
+      expect(tool?._meta?.ui).toBeUndefined();
+    }
+  });
+
+  it("creates, versions, and retrieves a score through strict headless tools", async () => {
+    const store = new InMemoryScoreStore({
+      now: () => Date.parse("2026-08-24T12:00:00.000Z"),
+      createId: () => "opaque-mcp-score-00000001"
+    });
+    const client = await connect(store);
+    const score = JSON.parse(
+      readFileSync(resolve("test", "fixtures", "music-score-v1-valid.json"), "utf8")
+    );
+
+    const created = await client.callTool({
+      name: "create_score",
+      arguments: { score, ttlSeconds: 120 }
+    });
+    expect(created.isError).not.toBe(true);
+    expect(created.structuredContent).toMatchObject({
+      status: "created",
+      scoreId: "opaque-mcp-score-00000001",
+      version: 1,
+      expiresAt: "2026-08-24T12:02:00.000Z"
+    });
+
+    score.metadata.title = "Updated through MCP";
+    const updated = await client.callTool({
+      name: "update_score",
+      arguments: {
+        scoreId: "opaque-mcp-score-00000001",
+        expectedVersion: 1,
+        score
+      }
+    });
+    expect(updated.structuredContent).toMatchObject({ status: "updated", version: 2 });
+
+    const oldVersion = await client.callTool({
+      name: "get_score",
+      arguments: { scoreId: "opaque-mcp-score-00000001", version: 1 }
+    });
+    expect(oldVersion.structuredContent).toMatchObject({
+      status: "found",
+      version: 1,
+      score: { metadata: { title: "Drop D Study" } }
+    });
+
+    const conflict = await client.callTool({
+      name: "update_score",
+      arguments: {
+        scoreId: "opaque-mcp-score-00000001",
+        expectedVersion: 1,
+        score
+      }
+    });
+    expect(conflict.structuredContent).toMatchObject({
+      status: "version_conflict",
+      currentVersion: 2
+    });
+  });
+
+  it("returns deterministic validation diagnostics without creating a session", async () => {
+    const client = await connect();
+    const score = JSON.parse(
+      readFileSync(resolve("test", "fixtures", "music-score-v1-invalid.json"), "utf8")
+    );
+
+    const validation = await client.callTool({
+      name: "validate_score",
+      arguments: { score }
+    });
+    expect(validation.isError).not.toBe(true);
+    expect(validation.structuredContent).toMatchObject({
+      valid: false,
+      diagnostics: expect.arrayContaining([
+        expect.objectContaining({ code: "DUPLICATE_ID" }),
+        expect.objectContaining({ code: "RHYTHM_UNDERFULL" })
+      ])
+    });
+
+    const strictContract = await client.callTool({
+      name: "get_score",
+      arguments: { scoreId: "opaque-score-id-00000001", unexpected: true }
+    });
+    expect(strictContract.isError).toBe(true);
   });
 
   it("returns the demo Guitar Pro file as an MCP resource link", async () => {

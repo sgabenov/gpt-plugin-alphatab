@@ -10,6 +10,7 @@ import {
   GP_MIME_TYPE
 } from "./gp-export.js";
 import { createAlphaTabMcpServer } from "./mcp-server.js";
+import { InMemoryScoreStore } from "./score-store.js";
 import {
   ALPHATAB_ASSET_ROUTE,
   ALPHATAB_VERSION,
@@ -74,7 +75,10 @@ async function runStdio(): Promise<void> {
   addDownloadRoutes(app);
   listen(app, port, "alphaTab local asset server");
 
-  const server = createAlphaTabMcpServer({ assetBaseUrl: assetBaseUrl(port) });
+  const server = createAlphaTabMcpServer({
+    assetBaseUrl: assetBaseUrl(port),
+    scoreStore: new InMemoryScoreStore()
+  });
   await server.connect(new StdioServerTransport());
 }
 
@@ -82,6 +86,7 @@ async function runHttp(): Promise<void> {
   const port = configuredPort();
   const assets = assetBaseUrl(port);
   const app = express();
+  const scoreStore = new InMemoryScoreStore();
   app.use(express.json({ limit: "1mb" }));
   addAssetRoutes(app);
   addPreviewRoute(app, assets);
@@ -94,7 +99,7 @@ async function runHttp(): Promise<void> {
   });
 
   app.all(mcpPath, async (request: Request, response: Response) => {
-    const server = createAlphaTabMcpServer({ assetBaseUrl: assets });
+    const server = createAlphaTabMcpServer({ assetBaseUrl: assets, scoreStore });
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
 
     response.on("close", () => {
