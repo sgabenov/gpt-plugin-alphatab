@@ -1,0 +1,38 @@
+{
+  "name": "gpt-plugin-alphatab",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "ChatGPT Plugin for generating, rendering, playing, importing, and exporting music notation with alphaTab.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "npm run build:ui && npm run build:server",
+    "build:ui": "node scripts/build-ui.mjs",
+    "build:server": "tsc -p tsconfig.server.json",
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/server/server.js",
+    "start:stdio": "node dist/server/server.js --stdio",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.server.json --noEmit",
+    "validate:plugin": "node scripts/validate-plugin.mjs",
+    "check": "npm run typecheck && npm test && npm run build && npm run validate:plugin"
+  },
+  "dependencies": {
+    "@coderline/alphatab": "1.8.4",
+    "@modelcontextprotocol/ext-apps": "1.7.5",
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "express": "5.2.1",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/express": "5.0.6",
+    "@types/node": "24.10.1",
+    "esbuild": "0.25.12",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3",
+    "vitest": "4.1.11"
+  }
+}
