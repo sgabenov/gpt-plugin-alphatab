@@ -51,7 +51,7 @@ export function loadUiBundle(cwd = process.cwd()): string {
 
 export function loadAlphaTabRuntime(cwd = process.cwd()): string {
   return readFileSync(
-    resolve(cwd, "dist", "assets", "alphatab", ALPHATAB_VERSION, "runtime", "alphaTab.min.js"),
+    resolve(cwd, "vendor", "alphatab", ALPHATAB_VERSION, "runtime", "alphaTab.min.js"),
     "utf8"
   );
 }
