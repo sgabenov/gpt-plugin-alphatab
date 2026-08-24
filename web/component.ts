@@ -199,6 +199,7 @@ function destroyAlphaTab(): void {
     playerReadyTimeout = undefined;
   }
   if (runtimeObjectUrl) {
+    URL.revokeObjectURL(runtimeObjectUrl);
     runtimeObjectUrl = undefined;
   }
   if (fontObjectUrl) {
@@ -253,7 +254,13 @@ function renderScore(payload: ScorePayload): void {
   meta.textContent = `${payload.bars} bars · ${payload.timeSignature} · ${payload.tempo} BPM · ${payload.tuning.join(" ")}`;
   setStatus("Rendering score…");
 
-  runtimeObjectUrl = `data:application/javascript;base64,${assets.alphaTabRuntimeBase64}`;
+  // The Codex iframe CSP permits blob scripts but blocks data scripts. The
+  // runtime URL is also used by alphaTab's renderer and synth workers.
+  runtimeObjectUrl = URL.createObjectURL(new Blob(
+    [base64ToBytes(assets.alphaTabRuntimeBase64)],
+    { type: "application/javascript" }
+  ));
+
   fontObjectUrl = URL.createObjectURL(new Blob(
     [base64ToBytes(assets.smuflFontWoff2Base64)],
     { type: "font/woff2" }

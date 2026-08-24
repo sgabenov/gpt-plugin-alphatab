@@ -253,5 +253,10 @@ describe("the Phase 0 MCP server", () => {
     }
     expect(resource?.mimeType).toBe("text/html;profile=mcp-app");
     expect(resource.text).toContain("test UI");
+    expect(resource._meta?.ui).toMatchObject({
+      csp: {
+        resourceDomains: ["http://127.0.0.1:8787", "blob:"]
+      }
+    });
   });
 });

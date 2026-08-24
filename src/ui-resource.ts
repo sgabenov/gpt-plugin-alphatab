@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-export const UI_RESOURCE_URI = "ui://alphatab/score-viewer-v5.html";
+export const UI_RESOURCE_URI = "ui://alphatab/score-viewer-v6.html";
 export const ALPHATAB_VERSION = "1.8.4";
 export const ALPHATAB_ASSET_ROUTE = `/assets/alphatab/${ALPHATAB_VERSION}`;
 
@@ -32,11 +32,11 @@ export function buildPreviewCsp(assetBaseUrl: string): string {
   const { origin } = buildAssetUrls(assetBaseUrl);
   return [
     "default-src 'none'",
-    "script-src 'unsafe-inline' blob: data:",
+    "script-src 'unsafe-inline' blob:",
     "style-src 'unsafe-inline'",
-    `font-src ${origin} blob:`,
+    "font-src 'self' blob:",
     `connect-src ${origin}`,
-    `worker-src ${origin} blob: data:`,
+    `worker-src ${origin} blob:`,
     `media-src ${origin} blob:`,
     `img-src ${origin} data: blob:`
   ].join("; ");

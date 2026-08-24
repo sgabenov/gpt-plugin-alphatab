@@ -158,7 +158,7 @@ export function createAlphaTabMcpServer(options: AlphaTabServerOptions = {}): Mc
                 prefersBorder: false,
                 csp: {
                   connectDomains: [assetOrigin],
-                  resourceDomains: [assetOrigin]
+                  resourceDomains: [assetOrigin, "blob:"]
                 }
               }
             }

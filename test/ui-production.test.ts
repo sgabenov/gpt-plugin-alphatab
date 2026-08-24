@@ -39,6 +39,9 @@ describe("the production score component", () => {
     expect(component).toContain("soundFontBase64");
     expect(component).toContain("WebAudioScriptProcessor");
     expect(component).not.toContain("outputMode: window.alphaTab.PlayerOutputMode.WebAudioAudioWorklets");
+    expect(component).toContain('URL.createObjectURL(new Blob(');
+    expect(component).not.toContain('data:application/javascript;base64');
+    expect(component).toContain('type: "font/woff2"');
     expect(component).toContain("loadSoundFont(base64ToBytes");
   });
 

@@ -9,7 +9,7 @@ import {
 
 describe("the MCP Apps UI resource", () => {
   it("uses a versioned URI and pinned local alphaTab resources", () => {
-    expect(UI_RESOURCE_URI).toContain("v5.html");
+    expect(UI_RESOURCE_URI).toContain("v6.html");
     const assets = buildAssetUrls("http://127.0.0.1:9000/path-is-ignored");
     expect(assets.runtimeUrl).toBe(
       `http://127.0.0.1:9000/assets/alphatab/${ALPHATAB_VERSION}/runtime/alphaTab.min.js`
@@ -58,9 +58,10 @@ describe("the MCP Apps UI resource", () => {
     const csp = buildPreviewCsp("http://127.0.0.1:9000");
 
     expect(csp).toContain("default-src 'none'");
-    expect(csp).toContain("script-src 'unsafe-inline' blob: data:");
-    expect(csp).toContain("worker-src http://127.0.0.1:9000 blob: data:");
-    expect(csp).toContain("font-src http://127.0.0.1:9000 blob:");
+    expect(csp).toContain("script-src 'unsafe-inline' blob:");
+    expect(csp).not.toContain("script-src 'unsafe-inline' blob: data:");
+    expect(csp).toContain("worker-src http://127.0.0.1:9000 blob:");
+    expect(csp).toContain("font-src 'self' blob:");
     expect(csp).not.toContain("https://cdn.jsdelivr.net");
   });
 });
