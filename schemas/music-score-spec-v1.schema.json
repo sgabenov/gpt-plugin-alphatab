@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://github.com/sgabenov/gpt-plugin-alphatab/schemas/music-score-spec-v1.schema.json",
+  "$id": "https://github.com/sgabenov/gpt-plugin-guitarpro-tab-composer/schemas/music-score-spec-v1.schema.json",
   "title": "MusicScoreSpec 1.0.0",
   "description": "Canonical, deterministic score model for GuitarPro Tab Composer.",
   "type": "object",
