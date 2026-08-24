@@ -74,7 +74,7 @@ Sessions default to a one-hour TTL. `create_score` accepts an explicit TTL from 
 - `export_score` returns a local Guitar Pro 7+ or alphaTex download link.
 - `get_demo_score`, `render_demo_score`, and `export_demo_gp` remain deterministic diagnostics for the original Phase 0 fixture.
 
-The viewer supports track selection, play/pause/stop, seeking, playback tempo, looping, metronome, volume, mute, solo, fullscreen requests, score import, and Guitar Pro download.
+The viewer supports track selection, play/pause/stop, playback tempo, looping, metronome, mute, solo, fullscreen requests, score import, and Guitar Pro download. Playback uses alphaTab's default master volume, and users can select a playback position directly in the rendered score.
 
 ## Local connection
 

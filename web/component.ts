@@ -78,8 +78,6 @@ root.innerHTML = `
     select, input { accent-color: #5b5bd6; }
     select { border: 1px solid var(--color-border-primary, #cfcfcf); border-radius: 8px; background: var(--color-background-secondary, #f5f5f5); color: inherit; padding: 6px 8px; }
     input[type=range] { width: 110px; }
-    .seek { flex: 1 1 180px; min-width: 140px; }
-    .seek input { width: 100%; }
     button { appearance: none; border: 1px solid var(--color-border-primary, #cfcfcf); border-radius: 8px; background: var(--color-background-secondary, #f5f5f5); color: inherit; padding: 7px 12px; font: inherit; font-size: 13px; cursor: pointer; }
     button:hover:not(:disabled) { background: var(--color-background-tertiary, #ececec); }
     button:focus-visible { outline: 2px solid #5b5bd6; outline-offset: 2px; }
@@ -111,9 +109,7 @@ root.innerHTML = `
       <button type="button" data-action="metronome" disabled aria-pressed="false">Metronome</button>
       <button type="button" data-action="mute" disabled aria-pressed="false">Mute</button>
       <button type="button" data-action="solo" disabled aria-pressed="false">Solo</button>
-      <label class="control seek">Position <input data-control="seek" type="range" min="0" max="1000" value="0" disabled aria-label="Playback position"></label>
       <label class="control">Tempo <input data-control="tempo" type="range" min="50" max="150" value="100" disabled aria-label="Playback tempo percentage"><output data-output="tempo">100%</output></label>
-      <label class="control">Volume <input data-control="volume" type="range" min="0" max="100" value="80" disabled aria-label="Master volume"><output data-output="volume">80%</output></label>
       <button type="button" data-action="import">Import score</button>
       <input data-control="file" type="file" accept=".gp,.gp3,.gp4,.gp5,.gpx,.musicxml,.xml,.alphatex,.atex,.txt" hidden>
       <button type="button" data-action="export-gp" disabled>Export GP</button>
@@ -139,11 +135,8 @@ const metronomeButton = root.querySelector<HTMLButtonElement>("[data-action=metr
 const muteButton = root.querySelector<HTMLButtonElement>("[data-action=mute]")!;
 const soloButton = root.querySelector<HTMLButtonElement>("[data-action=solo]")!;
 const trackSelect = root.querySelector<HTMLSelectElement>("[data-control=track]")!;
-const seekInput = root.querySelector<HTMLInputElement>("[data-control=seek]")!;
 const tempoInput = root.querySelector<HTMLInputElement>("[data-control=tempo]")!;
-const volumeInput = root.querySelector<HTMLInputElement>("[data-control=volume]")!;
 const tempoOutput = root.querySelector<HTMLOutputElement>("[data-output=tempo]")!;
-const volumeOutput = root.querySelector<HTMLOutputElement>("[data-output=volume]")!;
 const importButton = root.querySelector<HTMLButtonElement>("[data-action=import]")!;
 const fileInput = root.querySelector<HTMLInputElement>("[data-control=file]")!;
 const fullscreenButton = root.querySelector<HTMLButtonElement>("[data-action=fullscreen]")!;
@@ -153,8 +146,6 @@ let appBridge: App | undefined;
 let isPlayerReady = false;
 let isSoundFontLoading = false;
 let currentPayload: ScorePayload | undefined;
-let playbackEndTime = 0;
-let isSeeking = false;
 let selectedTrackIndex = 0;
 let isMuted = false;
 let isSolo = false;
@@ -186,7 +177,7 @@ function destroyAlphaTab(): void {
   playButton.disabled = true;
   stopButton.disabled = true;
   exportGpButton.disabled = true;
-  for (const control of [loopButton, metronomeButton, muteButton, soloButton, trackSelect, seekInput, tempoInput, volumeInput]) {
+  for (const control of [loopButton, metronomeButton, muteButton, soloButton, trackSelect, tempoInput]) {
     control.disabled = true;
   }
   if (alphaTabApi) {
@@ -206,7 +197,6 @@ function destroyAlphaTab(): void {
 function renderScore(payload: ScorePayload): void {
   destroyAlphaTab();
   currentPayload = payload;
-  playbackEndTime = 0;
   selectedTrackIndex = 0;
   isMuted = false;
   isSolo = false;
@@ -263,10 +253,9 @@ function renderScore(payload: ScorePayload): void {
     playButton.disabled = false;
     stopButton.disabled = false;
     exportGpButton.disabled = false;
-    for (const control of [loopButton, metronomeButton, muteButton, soloButton, seekInput, tempoInput, volumeInput]) {
+    for (const control of [loopButton, metronomeButton, muteButton, soloButton, tempoInput]) {
       control.disabled = false;
     }
-    api.masterVolume = Number(volumeInput.value) / 100;
     setStatus("Ready");
   });
   api.soundFontLoaded.on(() => {
@@ -283,8 +272,7 @@ function renderScore(payload: ScorePayload): void {
     }
     trackSelect.disabled = score.tracks.length < 2;
   });
-  api.midiLoaded.on((event) => {
-    playbackEndTime = event.endTime;
+  api.midiLoaded.on(() => {
     if (!isSoundFontLoading && !isPlayerReady) {
       isSoundFontLoading = true;
       setStatus("Loading sounds…");
@@ -296,12 +284,6 @@ function renderScore(payload: ScorePayload): void {
   });
   api.playerStateChanged.on((event) => {
     playButton.textContent = event.state === 1 ? "Pause" : "Play";
-  });
-  api.playerPositionChanged.on((event) => {
-    playbackEndTime = event.endTime;
-    if (!isSeeking && event.endTime > 0) {
-      seekInput.value = String(Math.round((event.currentTime / event.endTime) * 1000));
-    }
   });
   api.error.on((error) => {
     console.error("alphaTab error", error);
@@ -354,22 +336,10 @@ soloButton.addEventListener("click", () => {
   alphaTabApi.changeTrackSolo([track], isSolo);
   soloButton.setAttribute("aria-pressed", String(isSolo));
 });
-seekInput.addEventListener("pointerdown", () => { isSeeking = true; });
-seekInput.addEventListener("change", () => {
-  if (alphaTabApi && playbackEndTime > 0) {
-    alphaTabApi.timePosition = Number(seekInput.value) / 1000 * playbackEndTime;
-  }
-  isSeeking = false;
-});
 tempoInput.addEventListener("input", () => {
   const percentage = Number(tempoInput.value);
   tempoOutput.value = `${percentage}%`;
   if (alphaTabApi) alphaTabApi.playbackSpeed = percentage / 100;
-});
-volumeInput.addEventListener("input", () => {
-  const percentage = Number(volumeInput.value);
-  volumeOutput.value = `${percentage}%`;
-  if (alphaTabApi) alphaTabApi.masterVolume = percentage / 100;
 });
 
 importButton.addEventListener("click", () => fileInput.click());

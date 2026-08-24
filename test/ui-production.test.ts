@@ -11,9 +11,12 @@ describe("the production score component", () => {
     ]) {
       expect(component).toContain(`data-action="${control}"`);
     }
-    for (const control of ["track", "seek", "tempo", "volume", "file"]) {
+    for (const control of ["track", "tempo", "file"]) {
       expect(component).toContain(`data-control="${control}"`);
     }
+    expect(component).not.toContain('data-control="seek"');
+    expect(component).not.toContain('data-control="volume"');
+    expect(component).not.toContain("masterVolume");
   });
 
   it("uses standard MCP Apps capabilities with compatibility fallbacks", () => {
@@ -37,7 +40,6 @@ describe("the production score component", () => {
 
   it("labels interactive controls for assistive technology", () => {
     expect(component).toContain('aria-label="Playback controls"');
-    expect(component).toContain('aria-label="Playback position"');
     expect(component).toContain('aria-live="polite"');
     expect(component).toContain('aria-pressed="false"');
   });
