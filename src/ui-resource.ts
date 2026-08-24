@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-export const UI_RESOURCE_URI = "ui://alphatab/score-viewer-v1.html";
+export const UI_RESOURCE_URI = "ui://alphatab/score-viewer-v2.html";
 export const ALPHATAB_VERSION = "1.8.4";
 export const ALPHATAB_ASSET_ROUTE = `/assets/alphatab/${ALPHATAB_VERSION}`;
 
@@ -27,7 +27,7 @@ export function buildPreviewCsp(assetBaseUrl: string): string {
   const { origin } = buildAssetUrls(assetBaseUrl);
   return [
     "default-src 'none'",
-    `script-src 'unsafe-inline' ${origin}`,
+    "script-src 'unsafe-inline'",
     "style-src 'unsafe-inline'",
     `font-src ${origin}`,
     `connect-src ${origin}`,
@@ -49,10 +49,18 @@ export function loadUiBundle(cwd = process.cwd()): string {
   return readFileSync(resolve(cwd, "dist/ui/component.js"), "utf8");
 }
 
+export function loadAlphaTabRuntime(cwd = process.cwd()): string {
+  return readFileSync(
+    resolve(cwd, "dist", "assets", "alphatab", ALPHATAB_VERSION, "runtime", "alphaTab.min.js"),
+    "utf8"
+  );
+}
+
 export function buildUiHtml(
   uiBundle: string,
   assetBaseUrl = "http://127.0.0.1:8787",
-  previewScore?: unknown
+  previewScore?: unknown,
+  alphaTabRuntime = loadAlphaTabRuntime()
 ): string {
   const assets = buildAssetUrls(assetBaseUrl);
   const previewScript = previewScore
@@ -69,7 +77,7 @@ export function buildUiHtml(
     <div id="app"></div>
     <script>window.__ALPHATAB_ASSETS__ = ${serializeInlineData(assets)};</script>
     ${previewScript}
-    <script src="${assets.runtimeUrl}"></script>
+    <script>${escapeInlineModule(alphaTabRuntime)}</script>
     <script type="module">${escapeInlineModule(uiBundle)}</script>
   </body>
 </html>`;

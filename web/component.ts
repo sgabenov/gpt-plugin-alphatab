@@ -17,7 +17,7 @@ interface AlphaTabNamespace {
   AlphaTabApi: typeof AlphaTabApiType;
   exporter: {
     Gp7Exporter: new () => {
-      export(score: AlphaTabApiType["score"], settings?: AlphaTabApiType["settings"] | null): Uint8Array;
+      export(score: NonNullable<AlphaTabApiType["score"]>, settings?: AlphaTabApiType["settings"] | null): Uint8Array;
     };
   };
 }
@@ -206,7 +206,7 @@ function renderScore(payload: ScorePayload): void {
     core: {
       scriptFile: assets.runtimeUrl,
       fontDirectory: assets.fontDirectory,
-      useWorkers: true
+      useWorkers: false
     },
     display: {
       layoutMode: "page"
@@ -408,12 +408,12 @@ function bytesToBase64(bytes: Uint8Array): string {
 }
 
 exportGpButton.addEventListener("click", async () => {
-  if (!alphaTabApi || !window.alphaTab) return;
+  if (!alphaTabApi?.score) return;
 
   exportGpButton.disabled = true;
   setStatus("Exporting Guitar Pro file…");
 
-  const bytes = new window.alphaTab.exporter.Gp7Exporter().export(
+  const bytes = new window.alphaTab!.exporter.Gp7Exporter().export(
     alphaTabApi.score,
     alphaTabApi.settings
   );

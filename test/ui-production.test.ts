@@ -25,6 +25,11 @@ describe("the production score component", () => {
     expect(component).toContain("downloadBlob");
   });
 
+  it("uses the inline alphaTab runtime without a rendering worker", () => {
+    expect(component).toContain("new window.alphaTab.AlphaTabApi");
+    expect(component).toContain("useWorkers: false");
+  });
+
   it("labels interactive controls for assistive technology", () => {
     expect(component).toContain('aria-label="Playback controls"');
     expect(component).toContain('aria-label="Playback position"');

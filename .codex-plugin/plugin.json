@@ -1,6 +1,6 @@
 {
   "name": "gpt-plugin-alphatab",
-  "version": "0.1.0+codex.20260824125430",
+  "version": "0.1.0+codex.20260824131415",
   "description": "Generate, render, and play music notation and guitar tablature with alphaTab.",
   "author": {
     "name": "sgabenov",
