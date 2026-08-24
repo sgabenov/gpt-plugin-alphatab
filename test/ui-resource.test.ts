@@ -9,7 +9,7 @@ import {
 
 describe("the MCP Apps UI resource", () => {
   it("uses a versioned URI and pinned local alphaTab resources", () => {
-    expect(UI_RESOURCE_URI).toContain("v3.html");
+    expect(UI_RESOURCE_URI).toContain("v4.html");
     const assets = buildAssetUrls("http://127.0.0.1:9000/path-is-ignored");
     expect(assets.runtimeUrl).toBe(
       `http://127.0.0.1:9000/assets/alphatab/${ALPHATAB_VERSION}/runtime/alphaTab.min.js`

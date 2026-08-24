@@ -34,8 +34,15 @@ describe("the production score component", () => {
     expect(component).toContain("alphaTabRuntimeBase64");
     expect(component).toContain("smuflFontWoff2Base64");
     expect(component).toContain("soundFontBase64");
-    expect(component).toContain("WebAudioAudioWorklets");
+    expect(component).toContain("WebAudioScriptProcessor");
+    expect(component).not.toContain("outputMode: window.alphaTab.PlayerOutputMode.WebAudioAudioWorklets");
     expect(component).toContain("loadSoundFont(base64ToBytes");
+  });
+
+  it("rerenders when the MCP Apps host assigns the iframe its final width", () => {
+    expect(component).toContain("new ResizeObserver");
+    expect(component).toContain("api.render()");
+    expect(component).toContain("Playback initialization timed out");
   });
 
   it("labels interactive controls for assistive technology", () => {

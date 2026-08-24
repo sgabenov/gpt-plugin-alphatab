@@ -20,6 +20,7 @@ interface AlphaTabNamespace {
   };
   PlayerOutputMode: {
     WebAudioAudioWorklets: number;
+    WebAudioScriptProcessor: number;
   };
   exporter: {
     Gp7Exporter: new () => {
@@ -151,6 +152,8 @@ let isMuted = false;
 let isSolo = false;
 let runtimeObjectUrl: string | undefined;
 let fontObjectUrl: string | undefined;
+let resizeObserver: ResizeObserver | undefined;
+let playerReadyTimeout: number | undefined;
 
 function setStatus(message: string): void {
   status.textContent = message;
@@ -183,6 +186,12 @@ function destroyAlphaTab(): void {
   if (alphaTabApi) {
     alphaTabApi.destroy();
     alphaTabApi = undefined;
+  }
+  resizeObserver?.disconnect();
+  resizeObserver = undefined;
+  if (playerReadyTimeout !== undefined) {
+    window.clearTimeout(playerReadyTimeout);
+    playerReadyTimeout = undefined;
   }
   if (runtimeObjectUrl) {
     runtimeObjectUrl = undefined;
@@ -235,14 +244,38 @@ function renderScore(payload: ScorePayload): void {
       enableCursor: true,
       enableElementHighlighting: true,
       soundFont: null,
-      outputMode: window.alphaTab.PlayerOutputMode.WebAudioAudioWorklets,
+      // MCP App iframes cannot reliably resolve alphaTab's external audio-worklet
+      // module from the embedded data-URL runtime. ScriptProcessor keeps playback
+      // self-contained and avoids leaving player initialization pending forever.
+      outputMode: window.alphaTab.PlayerOutputMode.WebAudioScriptProcessor,
       scrollElement: viewport
     }
   });
 
   alphaTabApi = api;
+  let renderedWidth = Math.round(viewport.getBoundingClientRect().width);
+  let resizeFrame: number | undefined;
+  resizeObserver = new ResizeObserver(() => {
+    const nextWidth = Math.round(viewport.getBoundingClientRect().width);
+    if (nextWidth < 280 || Math.abs(nextWidth - renderedWidth) < 2 || alphaTabApi !== api) return;
+    renderedWidth = nextWidth;
+    if (resizeFrame !== undefined) window.cancelAnimationFrame(resizeFrame);
+    resizeFrame = window.requestAnimationFrame(() => {
+      resizeFrame = window.requestAnimationFrame(() => {
+        if (alphaTabApi === api && api.score) api.render();
+      });
+    });
+  });
+  resizeObserver.observe(viewport);
+
+  playerReadyTimeout = window.setTimeout(() => {
+    if (alphaTabApi === api && !isPlayerReady) {
+      playerReadyTimeout = undefined;
+      setStatus("Playback initialization timed out");
+    }
+  }, 15000);
   api.renderFinished.on(() => {
-    if (!isPlayerReady) setStatus("Loading player…");
+    if (!isPlayerReady && playerReadyTimeout !== undefined) setStatus("Loading player…");
   });
   api.soundFontLoad.on((event) => {
     const percentage = event.total > 0 ? Math.floor((event.loaded / event.total) * 100) : 0;
@@ -250,6 +283,10 @@ function renderScore(payload: ScorePayload): void {
   });
   api.playerReady.on(() => {
     isPlayerReady = true;
+    if (playerReadyTimeout !== undefined) {
+      window.clearTimeout(playerReadyTimeout);
+      playerReadyTimeout = undefined;
+    }
     playButton.disabled = false;
     stopButton.disabled = false;
     exportGpButton.disabled = false;
@@ -260,7 +297,7 @@ function renderScore(payload: ScorePayload): void {
   });
   api.soundFontLoaded.on(() => {
     isSoundFontLoading = false;
-    if (!isPlayerReady) setStatus("Loading player…");
+    if (!isPlayerReady && playerReadyTimeout !== undefined) setStatus("Loading player…");
   });
   api.scoreLoaded.on((score) => {
     trackSelect.replaceChildren();
