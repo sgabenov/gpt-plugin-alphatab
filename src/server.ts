@@ -143,7 +143,7 @@ async function runHttp(): Promise<void> {
   const mcpPath = process.env.MCP_PATH ?? DEFAULT_MCP_PATH;
 
   app.get("/health", (_request, response) => {
-    response.json({ status: "ok", service: "alphatab-composer", alphaTabVersion: ALPHATAB_VERSION });
+    response.json({ status: "ok", service: "guitarpro-tab-composer", alphaTabVersion: ALPHATAB_VERSION });
   });
 
   app.all(mcpPath, async (request: Request, response: Response) => {
@@ -166,7 +166,7 @@ async function runHttp(): Promise<void> {
     }
   });
 
-  listen(app, port, `alphaTab Composer MCP server (${mcpPath})`);
+  listen(app, port, `GuitarPro Tab Composer MCP server (${mcpPath})`);
 }
 
 if (process.argv.includes("--stdio")) {

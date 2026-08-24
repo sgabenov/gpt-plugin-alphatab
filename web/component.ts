@@ -89,7 +89,7 @@ root.innerHTML = `
   <main class="shell">
     <header class="header">
       <div>
-        <h1 class="title">alphaTab score</h1>
+        <h1 class="title">GuitarPro Tab Composer</h1>
         <p class="meta">Waiting for score data</p>
       </div>
       <div class="status" role="status" aria-live="polite">Connecting…</div>
@@ -475,7 +475,7 @@ if (isScorePayload(window.__ALPHATAB_PREVIEW_SCORE__)) {
   fullscreenButton.disabled = true;
   renderScore(window.__ALPHATAB_PREVIEW_SCORE__);
 } else {
-  const app = new App({ name: "alphatab-score-viewer", version: "0.1.0" }, {}, { autoResize: true });
+  const app = new App({ name: "guitarpro-tab-composer-score-viewer", version: "0.1.0" }, {}, { autoResize: true });
   appBridge = app;
   app.onteardown = async () => {
     destroyAlphaTab();

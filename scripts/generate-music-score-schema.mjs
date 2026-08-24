@@ -15,7 +15,7 @@ const document = {
   $schema: "http://json-schema.org/draft-07/schema#",
   $id: "https://github.com/sgabenov/gpt-plugin-alphatab/schemas/music-score-spec-v1.schema.json",
   title: `MusicScoreSpec ${MUSIC_SCORE_SPEC_VERSION}`,
-  description: "Canonical, deterministic score model for the alphaTab ChatGPT Plugin.",
+  description: "Canonical, deterministic score model for GuitarPro Tab Composer.",
   ...generated
 };
 const contents = `${JSON.stringify(document, null, 2)}\n`;

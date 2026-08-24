@@ -47,7 +47,7 @@ export function createAlphaTabMcpServer(options: AlphaTabServerOptions = {}): Mc
   const assetOrigin = buildAssetUrls(assetBaseUrl).origin;
   const scoreStore = options.scoreStore ?? new InMemoryScoreStore();
   const server = new McpServer(
-    { name: "alphatab-composer", version: "0.1.0" },
+    { name: "guitarpro-tab-composer", version: "0.1.0" },
     {
       instructions:
         "Translate musical requests into MusicScoreSpec v1. Validate before persistence, then use create_score, get_score, and update_score for expiring versioned sessions. Use render_score for interactive notation and playback, compile_score for deterministic alphaTex, export_score for Guitar Pro or alphaTex downloads, and import_score for supported score files. Use demo tools only for diagnostics."
@@ -142,7 +142,7 @@ export function createAlphaTabMcpServer(options: AlphaTabServerOptions = {}): Mc
 
   registerAppResource(
     server,
-    "alphaTab score viewer",
+    "GuitarPro Tab Composer score viewer",
     UI_RESOURCE_URI,
     { description: "Interactive alphaTab score renderer and player." },
     async () => {

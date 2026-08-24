@@ -1,6 +1,6 @@
-# alphaTab ChatGPT Plugin
+# GuitarPro Tab Composer
 
-An MCP-based ChatGPT Plugin for generating, rendering, playing, importing, and exporting music notation and guitar tablature with [alphaTab](https://www.alphatab.net/).
+An MCP-based ChatGPT Plugin for generating, rendering, playing, importing, and exporting Guitar Pro music notation and tablature with [alphaTab](https://www.alphatab.net/).
 
 ## Project status
 

@@ -1,9 +1,9 @@
 ---
-name: alphatab-composer
+name: guitarpro-tab-composer
 description: Create, inspect, revise, render, play, import, and export music notation and guitar tablature through alphaTab. Use when a user asks for a riff, guitar tab, playable score, Guitar Pro file, or changes to an existing score.
 ---
 
-# alphaTab Composer
+# GuitarPro Tab Composer
 
 Use the plugin tools to turn a user's musical intent into validated notation.
 
