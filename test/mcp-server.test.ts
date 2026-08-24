@@ -54,6 +54,13 @@ describe("the Phase 0 MCP server", () => {
     expect(renderTool?._meta?.ui).toEqual({ resourceUri: UI_RESOURCE_URI });
     const scoreRenderTool = tools.tools.find((tool) => tool.name === "render_score");
     expect(scoreRenderTool?._meta?.ui).toEqual({ resourceUri: UI_RESOURCE_URI });
+    expect(scoreRenderTool?.description).toContain("After every successful create_score request");
+    expect(tools.tools.find((tool) => tool.name === "create_score")?.description).toContain(
+      "call render_score"
+    );
+    expect(tools.tools.find((tool) => tool.name === "export_score")?.description).toContain(
+      "does not open the inline player"
+    );
     for (const name of [
       "validate_score",
       "create_score",

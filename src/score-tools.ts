@@ -109,7 +109,7 @@ export function registerScoreTools(server: McpServer, store: InMemoryScoreStore)
     {
       title: "Create a versioned score",
       description:
-        "Validate and store a MusicScoreSpec v1 score in an expiring session. Returns an opaque score ID and immutable version 1.",
+        "Validate and store a MusicScoreSpec v1 score in an expiring session. Returns an opaque score ID and immutable version 1. For every user request to create, compose, or generate a score, call render_score with the returned scoreId and version before the final response unless the user explicitly requests no inline player.",
       inputSchema: z.object({
         score: MusicScoreSpecV1Schema,
         ttlSeconds: z
@@ -200,7 +200,7 @@ export function registerScoreTools(server: McpServer, store: InMemoryScoreStore)
     {
       title: "Create a new score version",
       description:
-        "Validate and append an immutable score version. The stable MusicScoreSpec score ID must not change, and expectedVersion provides optimistic concurrency.",
+        "Validate and append an immutable score version. The stable MusicScoreSpec score ID must not change, and expectedVersion provides optimistic concurrency. After the final successful revision, call render_score with the returned scoreId and version before the final response unless the user explicitly requests no inline player.",
       inputSchema: z.object({
         scoreId: ScoreIdSchema,
         expectedVersion: ScoreVersionSchema,

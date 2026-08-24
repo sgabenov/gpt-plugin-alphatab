@@ -80,7 +80,7 @@ export function registerAlphaTabScoreTools(
     "compile_score",
     {
       title: "Compile a stored score for alphaTab",
-      description: "Compile a validated stored MusicScoreSpec version into deterministic alphaTex for inspection or rendering.",
+      description: "Compile a validated stored MusicScoreSpec version into deterministic alphaTex for textual inspection. This headless tool does not open the inline player and must not replace render_score after score creation.",
       inputSchema: storedInput,
       outputSchema: CompiledScorePayloadSchema,
       annotations: {
@@ -107,7 +107,7 @@ export function registerAlphaTabScoreTools(
     "render_score",
     {
       title: "Render and play a stored score",
-      description: "Open a validated stored MusicScoreSpec version in the interactive alphaTab notation and playback component.",
+      description: "Open the final stored score in the inline alphaTab notation and playback component. After every successful create_score request, always call this tool with the returned scoreId and version before the final response, including workflows that also call export_score.",
       inputSchema: storedInput,
       outputSchema: CompiledScorePayloadSchema,
       annotations: {
@@ -138,7 +138,7 @@ export function registerAlphaTabScoreTools(
     "export_score",
     {
       title: "Export a stored score",
-      description: "Export a stored score version as Guitar Pro 7+ or alphaTex and return a local download link.",
+      description: "Export a stored score version as Guitar Pro 7+ or alphaTex and return a local download link. This tool does not open the inline player; score-creation workflows must also call render_score before the final response.",
       inputSchema: storedInput.extend({ format: z.enum(["gp", "alphatex"]) }).strict(),
       outputSchema: z.object({
         filename: z.string(),

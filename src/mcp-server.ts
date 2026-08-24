@@ -50,7 +50,7 @@ export function createAlphaTabMcpServer(options: AlphaTabServerOptions = {}): Mc
     { name: "guitarpro-tab-composer", version: "0.1.0" },
     {
       instructions:
-        "Translate musical requests into MusicScoreSpec v1. Validate before persistence, then use create_score, get_score, and update_score for expiring versioned sessions. Use render_score for interactive notation and playback, compile_score for deterministic alphaTex, export_score for Guitar Pro or alphaTex downloads, and import_score for supported score files. Use demo tools only for diagnostics."
+        "Translate musical requests into MusicScoreSpec v1 and validate before persistence. For every successful request to create, compose, or generate a score, call create_score and then always call render_score with the returned scoreId and version before the final response, including when export_score is also requested. For revisions, render the final version returned by update_score. Skip inline rendering only when the user explicitly requests no player or asks solely for validation or textual inspection. Use compile_score for deterministic alphaTex inspection, export_score for Guitar Pro or alphaTex downloads, import_score for supported score files, and demo tools only for diagnostics."
     }
   );
 
