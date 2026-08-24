@@ -16,6 +16,7 @@ import {
 } from "./ui-resource.js";
 import { InMemoryScoreStore } from "./score-store.js";
 import { registerScoreTools } from "./score-tools.js";
+import { registerAlphaTabScoreTools } from "./alphatab-tools.js";
 
 export interface AlphaTabServerOptions {
   uiBundle?: string;
@@ -44,15 +45,17 @@ function demoScoreResult() {
 export function createAlphaTabMcpServer(options: AlphaTabServerOptions = {}): McpServer {
   const assetBaseUrl = options.assetBaseUrl ?? process.env.ASSET_BASE_URL ?? "http://127.0.0.1:8787";
   const assetOrigin = buildAssetUrls(assetBaseUrl).origin;
+  const scoreStore = options.scoreStore ?? new InMemoryScoreStore();
   const server = new McpServer(
     { name: "alphatab-composer", version: "0.1.0" },
     {
       instructions:
-        "Use validate_score before persistence when the user only needs diagnostics. Use create_score, get_score, and update_score for expiring versioned MusicScoreSpec sessions. Use render_demo_score only when the user wants to see or play the Phase 0 demo score."
+        "Translate musical requests into MusicScoreSpec v1. Validate before persistence, then use create_score, get_score, and update_score for expiring versioned sessions. Use render_score for interactive notation and playback, compile_score for deterministic alphaTex, export_score for Guitar Pro or alphaTex downloads, and import_score for supported score files. Use demo tools only for diagnostics."
     }
   );
 
-  registerScoreTools(server, options.scoreStore ?? new InMemoryScoreStore());
+  registerScoreTools(server, scoreStore);
+  registerAlphaTabScoreTools(server, scoreStore, assetOrigin);
 
   server.registerTool(
     "get_demo_score",

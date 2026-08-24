@@ -4,7 +4,7 @@ An MCP-based ChatGPT Plugin for generating, rendering, playing, importing, and e
 
 ## Project status
 
-The project is in Phase 1, the headless-core stage. The implementation includes the plugin package, MCP server, MCP Apps UI boundary, the canonical `MusicScoreSpec` v1 contract, deterministic validation, and expiring versioned score sessions.
+The local MVP is implemented. It includes the plugin package, MCP server, MCP Apps UI, the canonical `MusicScoreSpec` v1 contract, deterministic validation and alphaTab compilation, expiring versioned score sessions, Guitar Pro/MusicXML/alphaTex import, Guitar Pro export, notation rendering, and playback controls.
 
 ## Planned workflow
 
@@ -37,7 +37,7 @@ Run `npm run sync:assets` after installing dependencies whenever the pinned alph
 
 For a deployed server, set `ASSET_BASE_URL` to its public HTTPS origin so the ChatGPT component can load the runtime, fonts, worker, worklet, and SoundFont from that server.
 
-Run the local Streamable HTTP MCP endpoint:
+Run the local Streamable HTTP MCP endpoint and asset server:
 
 ```bash
 npm run dev
@@ -65,7 +65,18 @@ The headless score workflow exposes four MCP tools:
 
 Sessions default to a one-hour TTL. `create_score` accepts an explicit TTL from 60 seconds to 24 hours and returns the exact `expiresAt` timestamp. Updates do not silently extend the session lifetime. Storage is process-local in this phase, so restarting the MCP server clears all sessions.
 
-The `export_demo_gp` MCP tool returns the deterministic Phase 0 Guitar Pro file as a resource link. The same file is available from `/downloads/phase-0-drop-d-riff.gp` while the local server is running.
+## MCP tools
+
+- `validate_score`, `create_score`, `get_score`, and `update_score` manage validated immutable score versions.
+- `compile_score` returns deterministic alphaTex for a stored version.
+- `render_score` opens a stored version in the interactive notation and playback component.
+- `import_score` accepts Guitar Pro, MusicXML, or alphaTex data up to 5 MB.
+- `export_score` returns a local Guitar Pro 7+ or alphaTex download link.
+- `get_demo_score`, `render_demo_score`, and `export_demo_gp` remain deterministic diagnostics for the original Phase 0 fixture.
+
+The viewer supports track selection, play/pause/stop, seeking, playback tempo, looping, metronome, volume, mute, solo, fullscreen requests, score import, and Guitar Pro download.
+
+## Local connection
 
 Run the stdio transport used by the local plugin configuration:
 
@@ -73,6 +84,32 @@ Run the stdio transport used by the local plugin configuration:
 npm run build
 npm run start:stdio
 ```
+
+The included [`.mcp.json`](.mcp.json) starts this command when the repository is installed as a local Codex plugin. Start a new task after installing or updating the plugin so Codex reloads its Skill and MCP tools.
+
+To test the Streamable HTTP endpoint directly, run MCP Inspector:
+
+```bash
+npx @modelcontextprotocol/inspector@latest
+```
+
+To connect from ChatGPT Developer mode, expose `http://127.0.0.1:8787/mcp` through OpenAI Secure MCP Tunnel or another HTTPS development tunnel, then add that endpoint under ChatGPT Plugins. Do not expose the unauthenticated local server directly to an untrusted network.
+
+## Example requests
+
+- “Create an eight-bar Drop D metal riff at 140 BPM, render it, and export Guitar Pro.”
+- “Write a four-bar fingerstyle study in 6/8 with a repeating bass line.”
+- “Import this MusicXML score, show the guitar part, and export it as Guitar Pro.”
+- “Change the last bar while preserving the existing notes' stable IDs.”
+
+## Current limitations
+
+- Storage is process-local and expires after the selected TTL.
+- Import converts the MusicScoreSpec v1 subset. Unsupported source features are reported or rejected rather than silently trusted.
+- The server is intended for a single local user and does not include authentication or durable storage.
+- The canonical contract currently focuses on pitched fretted-instrument notation; advanced layout, lyrics, percussion, and exhaustive Guitar Pro techniques remain post-MVP work.
+
+Security, privacy, file limits, and public-deployment requirements are documented in [`docs/security-privacy.md`](docs/security-privacy.md). alphaTab and bundled asset licensing is preserved under [`vendor/alphatab/1.8.4/`](vendor/alphatab/1.8.4/).
 
 ## Repository language
 

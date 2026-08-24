@@ -1,7 +1,7 @@
 # Phase 0 Rendering and Playback Spike
 
-Date: 2026-08-24  
-alphaTab: 1.8.4  
+Date: 2026-08-24
+alphaTab: 1.8.4
 Fixture: `phase-0-drop-d-riff`
 
 ## Scope

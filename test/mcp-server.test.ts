@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createAlphaTabMcpServer } from "../src/mcp-server.js";
 import { InMemoryScoreStore } from "../src/score-store.js";
 import { UI_RESOURCE_URI } from "../src/ui-resource.js";
+import { compileMusicScoreSpec } from "../src/alphatab-conversion.js";
 
 describe("the Phase 0 MCP server", () => {
   const closeCallbacks: Array<() => Promise<void>> = [];
@@ -41,13 +42,27 @@ describe("the Phase 0 MCP server", () => {
       "create_score",
       "get_score",
       "update_score",
+      "compile_score",
+      "render_score",
+      "export_score",
+      "import_score",
       "get_demo_score",
       "render_demo_score",
       "export_demo_gp"
     ]);
     const renderTool = tools.tools.find((tool) => tool.name === "render_demo_score");
     expect(renderTool?._meta?.ui).toEqual({ resourceUri: UI_RESOURCE_URI });
-    for (const name of ["validate_score", "create_score", "get_score", "update_score"]) {
+    const scoreRenderTool = tools.tools.find((tool) => tool.name === "render_score");
+    expect(scoreRenderTool?._meta?.ui).toEqual({ resourceUri: UI_RESOURCE_URI });
+    for (const name of [
+      "validate_score",
+      "create_score",
+      "get_score",
+      "update_score",
+      "compile_score",
+      "export_score",
+      "import_score"
+    ]) {
       const tool = tools.tools.find((candidate) => candidate.name === name);
       expect(tool?.inputSchema.additionalProperties).toBe(false);
       expect(tool?._meta?.ui).toBeUndefined();
@@ -74,6 +89,32 @@ describe("the Phase 0 MCP server", () => {
       scoreId: "opaque-mcp-score-00000001",
       version: 1,
       expiresAt: "2026-08-24T12:02:00.000Z"
+    });
+
+    const compiled = await client.callTool({
+      name: "compile_score",
+      arguments: { scoreId: "opaque-mcp-score-00000001" }
+    });
+    expect(compiled.structuredContent).toMatchObject({
+      id: "drop-d-study",
+      format: "alphatex",
+      bars: 1
+    });
+
+    const rendered = await client.callTool({
+      name: "render_score",
+      arguments: { scoreId: "opaque-mcp-score-00000001" }
+    });
+    expect(rendered.structuredContent).toMatchObject({ id: "drop-d-study" });
+
+    const exported = await client.callTool({
+      name: "export_score",
+      arguments: { scoreId: "opaque-mcp-score-00000001", format: "gp" }
+    });
+    expect(exported.structuredContent).toMatchObject({
+      filename: "drop-d-study.gp",
+      scoreId: "opaque-mcp-score-00000001",
+      version: 1
     });
 
     score.metadata.title = "Updated through MCP";
@@ -108,6 +149,32 @@ describe("the Phase 0 MCP server", () => {
     expect(conflict.structuredContent).toMatchObject({
       status: "version_conflict",
       currentVersion: 2
+    });
+  });
+
+  it("imports alphaTex through the MCP file boundary", async () => {
+    const store = new InMemoryScoreStore({ createId: () => "opaque-imported-score-0001" });
+    const client = await connect(store);
+    const score = JSON.parse(
+      readFileSync(resolve("test", "fixtures", "music-score-v1-valid.json"), "utf8")
+    );
+    const compiled = compileMusicScoreSpec(score);
+    if (!compiled.success) throw new Error("Compilation failed.");
+
+    const imported = await client.callTool({
+      name: "import_score",
+      arguments: {
+        filename: "drop-d-study.alphatex",
+        dataBase64: Buffer.from(compiled.payload.alphaTex).toString("base64")
+      }
+    });
+
+    expect(imported.isError).not.toBe(true);
+    expect(imported.structuredContent).toMatchObject({
+      status: "imported",
+      sourceFormat: "alphatex",
+      scoreId: "opaque-imported-score-0001",
+      version: 1
     });
   });
 

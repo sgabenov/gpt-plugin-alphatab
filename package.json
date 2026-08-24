@@ -19,9 +19,11 @@
     "start": "node dist/server/server.js",
     "start:stdio": "node dist/server/server.js --stdio",
     "test": "vitest run",
+    "test:ui": "vitest run test/ui-production.test.ts test/ui-resource.test.ts",
+    "lint": "node scripts/lint-repository.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.server.json --noEmit",
     "validate:plugin": "node scripts/validate-plugin.mjs",
-    "check": "npm run typecheck && npm test && npm run build && npm run schema:check && npm run validate:plugin"
+    "check": "npm run lint && npm run typecheck && npm test && npm run build && npm run schema:check && npm run validate:plugin"
   },
   "dependencies": {
     "@coderline/alphatab": "1.8.4",

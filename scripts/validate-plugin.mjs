@@ -24,8 +24,8 @@ if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(manifest.name ?? "")) {
   errors.push("name must use lower-case hyphen-case.");
 }
 
-if (!/^\d+\.\d+\.\d+$/.test(manifest.version ?? "")) {
-  errors.push("version must use strict semantic versioning.");
+if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(manifest.version ?? "")) {
+  errors.push("version must use semantic versioning.");
 }
 
 for (const field of ["skills", "mcpServers"]) {
