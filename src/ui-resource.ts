@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-export const UI_RESOURCE_URI = "ui://alphatab/score-viewer-v4.html";
+export const UI_RESOURCE_URI = "ui://alphatab/score-viewer-v5.html";
 export const ALPHATAB_VERSION = "1.8.4";
 export const ALPHATAB_ASSET_ROUTE = `/assets/alphatab/${ALPHATAB_VERSION}`;
 

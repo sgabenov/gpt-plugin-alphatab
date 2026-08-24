@@ -154,6 +154,9 @@ let runtimeObjectUrl: string | undefined;
 let fontObjectUrl: string | undefined;
 let resizeObserver: ResizeObserver | undefined;
 let playerReadyTimeout: number | undefined;
+let isScoreRendered = false;
+let playbackRequested = false;
+let currentDisplayMode: "inline" | "fullscreen" | "pip" = "inline";
 
 function setStatus(message: string): void {
   status.textContent = message;
@@ -177,6 +180,8 @@ function isScorePayload(value: unknown): value is ScorePayload {
 function destroyAlphaTab(): void {
   isPlayerReady = false;
   isSoundFontLoading = false;
+  isScoreRendered = false;
+  playbackRequested = false;
   playButton.disabled = true;
   stopButton.disabled = true;
   exportGpButton.disabled = true;
@@ -201,6 +206,33 @@ function destroyAlphaTab(): void {
     fontObjectUrl = undefined;
   }
   scoreElement.replaceChildren();
+}
+
+function scheduleScoreRender(): void {
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => {
+      if (alphaTabApi?.score) alphaTabApi.render();
+    });
+  });
+}
+
+function updateDisplayMode(mode: "inline" | "fullscreen" | "pip" | undefined): void {
+  if (!mode) return;
+  currentDisplayMode = mode;
+  fullscreenButton.textContent = mode === "fullscreen" ? "Return to chat" : "Fullscreen";
+  fullscreenButton.setAttribute("aria-pressed", String(mode === "fullscreen"));
+  scheduleScoreRender();
+}
+
+function startPlaybackTimeout(api: AlphaTabApiType): void {
+  if (playerReadyTimeout !== undefined) window.clearTimeout(playerReadyTimeout);
+  playerReadyTimeout = window.setTimeout(() => {
+    if (alphaTabApi === api && !isPlayerReady) {
+      playerReadyTimeout = undefined;
+      playbackRequested = false;
+      setStatus("Audio initialization timed out — press Play to retry");
+    }
+  }, 15000);
 }
 
 function renderScore(payload: ScorePayload): void {
@@ -268,14 +300,13 @@ function renderScore(payload: ScorePayload): void {
   });
   resizeObserver.observe(viewport);
 
-  playerReadyTimeout = window.setTimeout(() => {
-    if (alphaTabApi === api && !isPlayerReady) {
-      playerReadyTimeout = undefined;
-      setStatus("Playback initialization timed out");
-    }
-  }, 15000);
   api.renderFinished.on(() => {
-    if (!isPlayerReady && playerReadyTimeout !== undefined) setStatus("Loading player…");
+    isScoreRendered = true;
+    playButton.disabled = false;
+    exportGpButton.disabled = false;
+    if (!isPlayerReady && !playbackRequested && !isSoundFontLoading) {
+      setStatus("Score ready — press Play to initialize audio");
+    }
   });
   api.soundFontLoad.on((event) => {
     const percentage = event.total > 0 ? Math.floor((event.loaded / event.total) * 100) : 0;
@@ -293,11 +324,16 @@ function renderScore(payload: ScorePayload): void {
     for (const control of [loopButton, metronomeButton, muteButton, soloButton, tempoInput]) {
       control.disabled = false;
     }
+    const shouldStartPlayback = playbackRequested;
+    playbackRequested = false;
     setStatus("Ready");
+    if (shouldStartPlayback) api.playPause();
   });
   api.soundFontLoaded.on(() => {
     isSoundFontLoading = false;
-    if (!isPlayerReady && playerReadyTimeout !== undefined) setStatus("Loading player…");
+    if (!isPlayerReady) {
+      setStatus(playbackRequested ? "Initializing audio…" : "Score ready — press Play to initialize audio");
+    }
   });
   api.scoreLoaded.on((score) => {
     trackSelect.replaceChildren();
@@ -324,13 +360,33 @@ function renderScore(payload: ScorePayload): void {
   });
   api.error.on((error) => {
     console.error("alphaTab error", error);
+    if (isScoreRendered) {
+      playbackRequested = false;
+      if (playerReadyTimeout !== undefined) {
+        window.clearTimeout(playerReadyTimeout);
+        playerReadyTimeout = undefined;
+      }
+      setStatus("Score ready — audio is unavailable in this view");
+      return;
+    }
     scoreElement.innerHTML = '<div class="error" role="alert">The score could not be rendered.</div>';
     setStatus("Unable to render score");
   });
   api.tex(payload.alphaTex);
 }
 
-playButton.addEventListener("click", () => alphaTabApi?.playPause());
+playButton.addEventListener("click", () => {
+  if (!alphaTabApi || !isScoreRendered) return;
+  if (isPlayerReady) {
+    alphaTabApi.playPause();
+    return;
+  }
+  playbackRequested = true;
+  setStatus("Initializing audio…");
+  startPlaybackTimeout(alphaTabApi);
+  // The call must originate from the click so the iframe can unlock Web Audio.
+  alphaTabApi.playPause();
+});
 stopButton.addEventListener("click", () => alphaTabApi?.stop());
 loopButton.addEventListener("click", () => {
   if (!alphaTabApi) return;
@@ -386,8 +442,18 @@ fullscreenButton.addEventListener("click", async () => {
     return;
   }
   try {
-    const result = await appBridge.requestDisplayMode({ mode: "fullscreen" });
-    if (result.isError) setStatus("Fullscreen request was declined");
+    const targetMode = currentDisplayMode === "fullscreen" ? "inline" : "fullscreen";
+    const availableModes = appBridge.getHostContext()?.availableDisplayModes;
+    if (availableModes && !availableModes.includes(targetMode)) {
+      setStatus(targetMode === "inline" ? "Return to chat is unavailable" : "Fullscreen is unavailable");
+      return;
+    }
+    const result = await appBridge.requestDisplayMode({ mode: targetMode });
+    if (result.isError) {
+      setStatus(targetMode === "inline" ? "Return to chat was declined" : "Fullscreen request was declined");
+      return;
+    }
+    updateDisplayMode(result.mode);
   } catch (error) {
     console.warn("Fullscreen mode is unavailable", error);
     setStatus("Fullscreen mode is unavailable");
@@ -533,8 +599,13 @@ if (isScorePayload(window.__ALPHATAB_PREVIEW_SCORE__)) {
   fullscreenButton.disabled = true;
   renderScore(window.__ALPHATAB_PREVIEW_SCORE__);
 } else {
-  const app = new App({ name: "guitarpro-tab-composer-score-viewer", version: "0.1.0" }, {}, { autoResize: true });
+  const app = new App(
+    { name: "guitarpro-tab-composer-score-viewer", version: "0.1.0" },
+    { availableDisplayModes: ["inline", "fullscreen"] },
+    { autoResize: true }
+  );
   appBridge = app;
+  app.onhostcontextchanged = (context) => updateDisplayMode(context.displayMode);
   app.onteardown = async () => {
     destroyAlphaTab();
     return {};
@@ -550,6 +621,7 @@ if (isScorePayload(window.__ALPHATAB_PREVIEW_SCORE__)) {
 
   try {
     await app.connect();
+    updateDisplayMode(app.getHostContext()?.displayMode);
     setStatus("Waiting for score…");
   } catch (error) {
     console.error("MCP Apps connection failed", error);

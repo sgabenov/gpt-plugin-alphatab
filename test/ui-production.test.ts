@@ -23,6 +23,9 @@ describe("the production score component", () => {
     expect(component).toContain("updateModelContext");
     expect(component).toContain("downloadFile");
     expect(component).toContain("requestDisplayMode");
+    expect(component).toContain('availableDisplayModes: ["inline", "fullscreen"]');
+    expect(component).toContain("onhostcontextchanged");
+    expect(component).toContain('currentDisplayMode === "fullscreen" ? "inline" : "fullscreen"');
     expect(component).toContain("onteardown");
     expect(component).toContain("window.openai");
     expect(component).toContain("downloadBlob");
@@ -42,7 +45,9 @@ describe("the production score component", () => {
   it("rerenders when the MCP Apps host assigns the iframe its final width", () => {
     expect(component).toContain("new ResizeObserver");
     expect(component).toContain("api.render()");
-    expect(component).toContain("Playback initialization timed out");
+    expect(component).toContain("Score ready — press Play to initialize audio");
+    expect(component).toContain("Audio initialization timed out — press Play to retry");
+    expect(component).toContain("startPlaybackTimeout(alphaTabApi)");
   });
 
   it("labels interactive controls for assistive technology", () => {
