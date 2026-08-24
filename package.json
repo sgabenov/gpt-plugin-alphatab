@@ -9,6 +9,7 @@
     "node": ">=20"
   },
   "scripts": {
+    "sync:assets": "node scripts/sync-alphatab-assets.mjs",
     "build": "npm run build:ui && npm run build:server",
     "build:ui": "node scripts/build-ui.mjs",
     "build:server": "tsc -p tsconfig.server.json",

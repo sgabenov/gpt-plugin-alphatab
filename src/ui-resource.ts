@@ -3,18 +3,40 @@ import { resolve } from "node:path";
 
 export const UI_RESOURCE_URI = "ui://alphatab/score-viewer-v1.html";
 export const ALPHATAB_VERSION = "1.8.4";
-export const ALPHATAB_CDN_ORIGIN = "https://cdn.jsdelivr.net";
-export const ALPHATAB_SCRIPT_URL = `${ALPHATAB_CDN_ORIGIN}/npm/@coderline/alphatab@${ALPHATAB_VERSION}/dist/alphaTab.min.js`;
+export const ALPHATAB_ASSET_ROUTE = `/assets/alphatab/${ALPHATAB_VERSION}`;
+
+export interface AlphaTabAssetUrls {
+  origin: string;
+  runtimeUrl: string;
+  fontDirectory: string;
+  soundFontUrl: string;
+}
+
+export function buildAssetUrls(assetBaseUrl: string): AlphaTabAssetUrls {
+  const origin = new URL(assetBaseUrl).origin;
+  const root = `${origin}${ALPHATAB_ASSET_ROUTE}`;
+  return {
+    origin,
+    runtimeUrl: `${root}/runtime/alphaTab.min.js`,
+    fontDirectory: `${root}/font/`,
+    soundFontUrl: `${root}/soundfont/sonivox.sf2`
+  };
+}
 
 function escapeInlineModule(source: string): string {
   return source.replaceAll("</script", "<\\/script");
+}
+
+function serializeInlineData(value: unknown): string {
+  return JSON.stringify(value).replaceAll("<", "\\u003c");
 }
 
 export function loadUiBundle(cwd = process.cwd()): string {
   return readFileSync(resolve(cwd, "dist/ui/component.js"), "utf8");
 }
 
-export function buildUiHtml(uiBundle: string): string {
+export function buildUiHtml(uiBundle: string, assetBaseUrl = "http://127.0.0.1:8787"): string {
+  const assets = buildAssetUrls(assetBaseUrl);
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -24,7 +46,8 @@ export function buildUiHtml(uiBundle: string): string {
   </head>
   <body>
     <div id="app"></div>
-    <script src="${ALPHATAB_SCRIPT_URL}"></script>
+    <script>window.__ALPHATAB_ASSETS__ = ${serializeInlineData(assets)};</script>
+    <script src="${assets.runtimeUrl}"></script>
     <script type="module">${escapeInlineModule(uiBundle)}</script>
   </body>
 </html>`;

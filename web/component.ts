@@ -16,16 +16,19 @@ interface AlphaTabNamespace {
   AlphaTabApi: typeof AlphaTabApiType;
 }
 
+interface AlphaTabAssets {
+  origin: string;
+  runtimeUrl: string;
+  fontDirectory: string;
+  soundFontUrl: string;
+}
+
 declare global {
   interface Window {
     alphaTab?: AlphaTabNamespace;
+    __ALPHATAB_ASSETS__?: AlphaTabAssets;
   }
 }
-
-const ALPHATAB_VERSION = "1.8.4";
-const ALPHATAB_ROOT = `https://cdn.jsdelivr.net/npm/@coderline/alphatab@${ALPHATAB_VERSION}/dist`;
-const ALPHATAB_SCRIPT = `${ALPHATAB_ROOT}/alphaTab.min.js`;
-const SOUNDFONT_URL = `${ALPHATAB_ROOT}/soundfont/sonivox.sf2`;
 
 const root = document.querySelector<HTMLElement>("#app");
 if (!root) {
@@ -122,8 +125,9 @@ function destroyAlphaTab(): void {
 function renderScore(payload: ScorePayload): void {
   destroyAlphaTab();
 
-  if (!window.alphaTab) {
-    scoreElement.innerHTML = '<div class="error" role="alert">alphaTab failed to load.</div>';
+  const assets = window.__ALPHATAB_ASSETS__;
+  if (!window.alphaTab || !assets) {
+    scoreElement.innerHTML = '<div class="error" role="alert">Local alphaTab resources failed to load.</div>';
     setStatus("Renderer unavailable");
     return;
   }
@@ -134,8 +138,8 @@ function renderScore(payload: ScorePayload): void {
 
   const api = new window.alphaTab.AlphaTabApi(scoreElement, {
     core: {
-      scriptFile: ALPHATAB_SCRIPT,
-      fontDirectory: `${ALPHATAB_ROOT}/font/`,
+      scriptFile: assets.runtimeUrl,
+      fontDirectory: assets.fontDirectory,
       useWorkers: true
     },
     display: {
@@ -145,7 +149,7 @@ function renderScore(payload: ScorePayload): void {
       enablePlayer: true,
       enableCursor: true,
       enableElementHighlighting: true,
-      soundFont: SOUNDFONT_URL,
+      soundFont: assets.soundFontUrl,
       scrollElement: viewport
     }
   });

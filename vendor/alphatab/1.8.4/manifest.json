@@ -1,0 +1,23 @@
+{
+  "package": "@coderline/alphatab",
+  "version": "1.8.4",
+  "files": {
+    "font/Bravura-FONTLOG.txt": "sha256:32693de63580f14dbaf167e9a06224e8350c84ddc4f1f38878edef4dee193e1e",
+    "font/Bravura-OFL-FAQ.txt": "sha256:10403b7bed7e8846d47c030050c0c6c8d53cb52bcb13afa1f4044b0936c7f288",
+    "font/Bravura-OFL.txt": "sha256:c24929be7028026a65ee8894da1e3c36d2a4ccce0548d9ba8ba64509f46319ee",
+    "font/Bravura.eot": "sha256:67f0f9985e14d3c8b50886cbf02bc33c39e41f44ed93ae4f830d99776bff15f3",
+    "font/Bravura.otf": "sha256:883a86a8cfe77db6597b8ef56b9cf6efb079b0631a283a323945a41f976fb483",
+    "font/Bravura.svg": "sha256:c8d841b64e65b032c19f4e4a77625fca3baf16a0a4e0371041ddb34965bb4d70",
+    "font/Bravura.woff": "sha256:22a46a8480b8eecaa43ece95ec63b45599c8ef6d1ab24f0621834a8be01d4dd9",
+    "font/Bravura.woff2": "sha256:181e0e7c4889f9ad57dde0a11988fa61b941617aa499ecdb9dfd4713896c2b19",
+    "LICENSE": "sha256:de981130586154b6ce2cf91528b9291789192d62234d0d7e6e41d085b8e1d351",
+    "LICENSE.header": "sha256:670db9824aefb8216ca56da31b73f2d51710a828f408c4080e378b86314bd0ba",
+    "runtime/alphaTab.min.js": "sha256:2d0335501b875453d52359de23cd9cebfcf71aed3d5739f1cf95117acfd52bec",
+    "runtime/alphaTab.min.mjs": "sha256:0710b91ae94f15a923018b26978f1d48523d1a7241e5056933f290b0e1cc20c9",
+    "runtime/alphaTab.worker.min.mjs": "sha256:4c5524f00cf733d04c80cf005f909a25e640bd70064256a91f94499af05e5b7b",
+    "runtime/alphaTab.worklet.min.mjs": "sha256:4a7547759fb3c8b49f0fe246d1ece8402134c5bc337a12601bc847fa1ee2c153",
+    "soundfont/LICENSE": "sha256:57d801cd718614be838c71f35cf3dcbf5c011fa20130c194a447483dfa2771c5",
+    "soundfont/README.md": "sha256:ca9d6da8f8861658f8aff476ce138b236bd4fb44a1731523475eda64f5a760c7",
+    "soundfont/sonivox.sf2": "sha256:4978cf37e7164206f2d22dc4fdf4020ffe040787210bf781e31bdc79961f59ef"
+  }
+}

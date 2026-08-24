@@ -1,16 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { ALPHATAB_SCRIPT_URL, buildUiHtml, UI_RESOURCE_URI } from "../src/ui-resource.js";
+import {
+  ALPHATAB_VERSION,
+  buildAssetUrls,
+  buildUiHtml,
+  UI_RESOURCE_URI
+} from "../src/ui-resource.js";
 
 describe("the MCP Apps UI resource", () => {
-  it("uses a versioned URI and pinned alphaTab script", () => {
+  it("uses a versioned URI and pinned local alphaTab resources", () => {
     expect(UI_RESOURCE_URI).toContain("v1.html");
-    expect(ALPHATAB_SCRIPT_URL).toContain("@1.8.4/");
+    const assets = buildAssetUrls("http://127.0.0.1:9000/path-is-ignored");
+    expect(assets.runtimeUrl).toBe(
+      `http://127.0.0.1:9000/assets/alphatab/${ALPHATAB_VERSION}/runtime/alphaTab.min.js`
+    );
+    expect(assets.soundFontUrl).toContain(`/alphatab/${ALPHATAB_VERSION}/soundfont/sonivox.sf2`);
   });
 
   it("embeds the UI module and escapes closing script tags", () => {
-    const html = buildUiHtml('console.log("ok");</script>');
+    const html = buildUiHtml('console.log("ok");</script>', "http://127.0.0.1:9000");
     expect(html).toContain('console.log("ok")');
     expect(html).toContain("<\\/script>");
-    expect(html).toContain(ALPHATAB_SCRIPT_URL);
+    expect(html).toContain("http://127.0.0.1:9000/assets/alphatab/1.8.4/runtime/alphaTab.min.js");
+    expect(html).not.toContain("cdn.jsdelivr.net");
   });
 });

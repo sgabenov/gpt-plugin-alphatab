@@ -25,8 +25,17 @@ Install and verify:
 
 ```bash
 npm install
+npm run sync:assets
 npm run check
 ```
+
+## Vendored alphaTab resources
+
+The repository stores the pinned alphaTab 1.8.4 browser runtime, worker and worklet modules, Bravura notation fonts, Sonivox SoundFont, upstream licenses, and a SHA-256 manifest under `vendor/alphatab/1.8.4/`. The UI does not depend on a public CDN.
+
+Run `npm run sync:assets` after installing dependencies whenever the pinned alphaTab package is updated. The build copies these resources to `dist/assets/alphatab/1.8.4/`, and the local server exposes them under `/assets/alphatab/1.8.4/`.
+
+For a deployed server, set `ASSET_BASE_URL` to its public HTTPS origin so the ChatGPT component can load the runtime, fonts, worker, worklet, and SoundFont from that server.
 
 Run the local Streamable HTTP MCP endpoint:
 

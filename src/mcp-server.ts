@@ -1,10 +1,9 @@
-import { readFileSync } from "node:fs";
 import { registerAppResource, registerAppTool, RESOURCE_MIME_TYPE } from "@modelcontextprotocol/ext-apps/server";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { DEMO_SCORE, summarizeDemoScore } from "./demo-score.js";
 import {
-  ALPHATAB_CDN_ORIGIN,
+  buildAssetUrls,
   buildUiHtml,
   loadUiBundle,
   UI_RESOURCE_URI
@@ -12,6 +11,7 @@ import {
 
 export interface AlphaTabServerOptions {
   uiBundle?: string;
+  assetBaseUrl?: string;
 }
 
 const demoScoreOutputSchema = {
@@ -33,6 +33,8 @@ function demoScoreResult() {
 }
 
 export function createAlphaTabMcpServer(options: AlphaTabServerOptions = {}): McpServer {
+  const assetBaseUrl = options.assetBaseUrl ?? process.env.ASSET_BASE_URL ?? "http://127.0.0.1:8787";
+  const assetOrigin = buildAssetUrls(assetBaseUrl).origin;
   const server = new McpServer(
     { name: "alphatab-composer", version: "0.1.0" },
     {
@@ -93,13 +95,13 @@ export function createAlphaTabMcpServer(options: AlphaTabServerOptions = {}): Mc
           {
             uri: UI_RESOURCE_URI,
             mimeType: RESOURCE_MIME_TYPE,
-            text: buildUiHtml(uiBundle),
+            text: buildUiHtml(uiBundle, assetBaseUrl),
             _meta: {
               ui: {
                 prefersBorder: false,
                 csp: {
-                  connectDomains: [ALPHATAB_CDN_ORIGIN],
-                  resourceDomains: [ALPHATAB_CDN_ORIGIN]
+                  connectDomains: [assetOrigin],
+                  resourceDomains: [assetOrigin]
                 }
               }
             }
