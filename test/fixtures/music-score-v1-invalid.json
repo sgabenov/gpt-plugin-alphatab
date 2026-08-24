@@ -1,0 +1,69 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "invalid-score",
+  "metadata": { "title": "Invalid Score" },
+  "tempoEvents": [
+    {
+      "id": "invalid-score-tempo-1",
+      "position": {
+        "barId": "missing-bar",
+        "offset": { "numerator": 0, "denominator": 1 }
+      },
+      "bpm": 120
+    }
+  ],
+  "tracks": [
+    {
+      "id": "invalid-score-track-1",
+      "name": "Broken Guitar",
+      "instrument": { "family": "guitar", "midiProgram": 30 },
+      "tuning": [
+        { "string": 1, "pitch": { "step": "E", "octave": 4 } },
+        { "string": 1, "pitch": { "step": "B", "octave": 3 } },
+        { "string": 3, "pitch": { "step": "G", "octave": 3 } },
+        { "string": 4, "pitch": { "step": "D", "octave": 3 } },
+        { "string": 5, "pitch": { "step": "A", "octave": 2 } },
+        { "string": 6, "pitch": { "step": "D", "octave": 2 } }
+      ],
+      "fretCount": 24,
+      "range": {
+        "min": { "step": "E", "octave": 6 },
+        "max": { "step": "D", "octave": 2 }
+      },
+      "bars": [
+        {
+          "id": "invalid-score-track-1-bar-1",
+          "index": 1,
+          "timeSignature": { "numerator": 4, "denominator": 4 },
+          "voices": [
+            {
+              "id": "invalid-score-track-1-bar-1-voice-1",
+              "index": 0,
+              "events": [
+                {
+                  "id": "invalid-score-event-1",
+                  "kind": "notes",
+                  "duration": { "value": "quarter" },
+                  "notes": [
+                    {
+                      "id": "invalid-score",
+                      "pitch": { "step": "D", "octave": 2 },
+                      "string": 6,
+                      "fret": 25,
+                      "techniques": { "tieTo": "missing-note" }
+                    }
+                  ]
+                },
+                {
+                  "id": "invalid-score-event-2",
+                  "kind": "rest",
+                  "duration": { "value": "quarter" }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

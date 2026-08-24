@@ -1,0 +1,105 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "drop-d-study",
+  "metadata": {
+    "title": "Drop D Study",
+    "composer": "alphaTab Composer"
+  },
+  "tempoEvents": [
+    {
+      "id": "drop-d-study-tempo-1",
+      "position": {
+        "barId": "drop-d-study-track-1-bar-1",
+        "offset": { "numerator": 0, "denominator": 1 }
+      },
+      "bpm": 120
+    }
+  ],
+  "tracks": [
+    {
+      "id": "drop-d-study-track-1",
+      "name": "Electric Guitar",
+      "instrument": { "family": "guitar", "midiProgram": 30 },
+      "tuning": [
+        { "string": 1, "pitch": { "step": "E", "octave": 4 } },
+        { "string": 2, "pitch": { "step": "B", "octave": 3 } },
+        { "string": 3, "pitch": { "step": "G", "octave": 3 } },
+        { "string": 4, "pitch": { "step": "D", "octave": 3 } },
+        { "string": 5, "pitch": { "step": "A", "octave": 2 } },
+        { "string": 6, "pitch": { "step": "D", "octave": 2 } }
+      ],
+      "range": {
+        "min": { "step": "D", "octave": 2 },
+        "max": { "step": "E", "octave": 6 }
+      },
+      "bars": [
+        {
+          "id": "drop-d-study-track-1-bar-1",
+          "index": 0,
+          "timeSignature": { "numerator": 4, "denominator": 4 },
+          "voices": [
+            {
+              "id": "drop-d-study-track-1-bar-1-voice-1",
+              "index": 0,
+              "events": [
+                {
+                  "id": "drop-d-study-event-1",
+                  "kind": "notes",
+                  "duration": { "value": "quarter" },
+                  "notes": [
+                    {
+                      "id": "drop-d-study-note-1",
+                      "pitch": { "step": "D", "octave": 2 },
+                      "string": 6,
+                      "fret": 0,
+                      "techniques": { "palmMute": true }
+                    },
+                    {
+                      "id": "drop-d-study-note-2",
+                      "pitch": { "step": "A", "octave": 2 },
+                      "string": 5,
+                      "fret": 0
+                    }
+                  ]
+                },
+                {
+                  "id": "drop-d-study-event-2",
+                  "kind": "notes",
+                  "duration": { "value": "quarter" },
+                  "notes": [
+                    {
+                      "id": "drop-d-study-note-3",
+                      "pitch": { "step": "F", "octave": 2 },
+                      "string": 6,
+                      "fret": 3,
+                      "techniques": { "hammerOnTo": "drop-d-study-note-4" }
+                    }
+                  ]
+                },
+                {
+                  "id": "drop-d-study-event-3",
+                  "kind": "notes",
+                  "duration": { "value": "quarter" },
+                  "notes": [
+                    {
+                      "id": "drop-d-study-note-4",
+                      "pitch": { "step": "G", "octave": 2 },
+                      "string": 6,
+                      "fret": 5,
+                      "techniques": { "letRing": true }
+                    }
+                  ]
+                },
+                {
+                  "id": "drop-d-study-event-4",
+                  "kind": "rest",
+                  "duration": { "value": "quarter" }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

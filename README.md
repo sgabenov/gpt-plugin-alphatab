@@ -54,6 +54,8 @@ Runtime constraints and the pinned support matrix are documented in:
 - [`docs/phase-0-runtime-constraints.md`](docs/phase-0-runtime-constraints.md)
 - [`docs/alphatab-compatibility-matrix.md`](docs/alphatab-compatibility-matrix.md)
 
+The canonical Phase 1 score contract is documented in [`docs/music-score-spec-v1.md`](docs/music-score-spec-v1.md) and published as [`schemas/music-score-spec-v1.schema.json`](schemas/music-score-spec-v1.schema.json).
+
 The `export_demo_gp` MCP tool returns the deterministic Phase 0 Guitar Pro file as a resource link. The same file is available from `/downloads/phase-0-drop-d-riff.gp` while the local server is running.
 
 Run the stdio transport used by the local plugin configuration:

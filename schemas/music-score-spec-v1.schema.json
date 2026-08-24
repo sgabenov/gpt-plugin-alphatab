@@ -1,0 +1,630 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/sgabenov/gpt-plugin-alphatab/schemas/music-score-spec-v1.schema.json",
+  "title": "MusicScoreSpec 1.0.0",
+  "description": "Canonical, deterministic score model for the alphaTab ChatGPT Plugin.",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "id": {
+      "$ref": "#/definitions/__schema0"
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "artist": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "album": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "composer": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "copyright": {
+          "type": "string",
+          "maxLength": 500
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "additionalProperties": false
+    },
+    "tempoEvents": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/__schema1"
+      }
+    },
+    "tracks": {
+      "minItems": 1,
+      "maxItems": 32,
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/__schema2"
+      }
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "id",
+    "metadata",
+    "tempoEvents",
+    "tracks"
+  ],
+  "additionalProperties": false,
+  "definitions": {
+    "__schema0": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 96,
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+    },
+    "__schema1": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/__schema0"
+        },
+        "position": {
+          "type": "object",
+          "properties": {
+            "barId": {
+              "$ref": "#/definitions/__schema0"
+            },
+            "offset": {
+              "type": "object",
+              "properties": {
+                "numerator": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "denominator": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 128
+                }
+              },
+              "required": [
+                "numerator",
+                "denominator"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "barId",
+            "offset"
+          ],
+          "additionalProperties": false
+        },
+        "bpm": {
+          "type": "integer",
+          "minimum": 20,
+          "maximum": 400
+        }
+      },
+      "required": [
+        "id",
+        "position",
+        "bpm"
+      ],
+      "additionalProperties": false
+    },
+    "__schema2": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/__schema0"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "shortName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 24
+        },
+        "instrument": {
+          "type": "object",
+          "properties": {
+            "family": {
+              "type": "string",
+              "enum": [
+                "guitar",
+                "bass",
+                "other"
+              ]
+            },
+            "midiProgram": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 127
+            }
+          },
+          "required": [
+            "family",
+            "midiProgram"
+          ],
+          "additionalProperties": false
+        },
+        "tuning": {
+          "minItems": 1,
+          "maxItems": 12,
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/__schema3"
+          }
+        },
+        "capo": {
+          "default": 0,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 24
+        },
+        "fretCount": {
+          "default": 24,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 36
+        },
+        "range": {
+          "type": "object",
+          "properties": {
+            "min": {
+              "$ref": "#/definitions/__schema4"
+            },
+            "max": {
+              "$ref": "#/definitions/__schema4"
+            }
+          },
+          "required": [
+            "min",
+            "max"
+          ],
+          "additionalProperties": false
+        },
+        "bars": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/__schema5"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "instrument",
+        "tuning",
+        "capo",
+        "fretCount",
+        "range",
+        "bars"
+      ],
+      "additionalProperties": false
+    },
+    "__schema3": {
+      "type": "object",
+      "properties": {
+        "string": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 12
+        },
+        "pitch": {
+          "$ref": "#/definitions/__schema4"
+        }
+      },
+      "required": [
+        "string",
+        "pitch"
+      ],
+      "additionalProperties": false
+    },
+    "__schema4": {
+      "type": "object",
+      "properties": {
+        "step": {
+          "type": "string",
+          "enum": [
+            "C",
+            "D",
+            "E",
+            "F",
+            "G",
+            "A",
+            "B"
+          ]
+        },
+        "octave": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9
+        },
+        "alter": {
+          "default": 0,
+          "type": "integer",
+          "minimum": -2,
+          "maximum": 2
+        }
+      },
+      "required": [
+        "step",
+        "octave",
+        "alter"
+      ],
+      "additionalProperties": false
+    },
+    "__schema5": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/__schema0"
+        },
+        "index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "timeSignature": {
+          "type": "object",
+          "properties": {
+            "numerator": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 32
+            },
+            "denominator": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "const": 1
+                },
+                {
+                  "type": "number",
+                  "const": 2
+                },
+                {
+                  "type": "number",
+                  "const": 4
+                },
+                {
+                  "type": "number",
+                  "const": 8
+                },
+                {
+                  "type": "number",
+                  "const": 16
+                },
+                {
+                  "type": "number",
+                  "const": 32
+                }
+              ]
+            }
+          },
+          "required": [
+            "numerator",
+            "denominator"
+          ],
+          "additionalProperties": false
+        },
+        "voices": {
+          "minItems": 1,
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/__schema6"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "index",
+        "timeSignature",
+        "voices"
+      ],
+      "additionalProperties": false
+    },
+    "__schema6": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/__schema0"
+        },
+        "index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 7
+        },
+        "events": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/__schema7"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "index",
+        "events"
+      ],
+      "additionalProperties": false
+    },
+    "__schema7": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/definitions/__schema0"
+            },
+            "kind": {
+              "type": "string",
+              "const": "notes"
+            },
+            "duration": {
+              "$ref": "#/definitions/__schema8"
+            },
+            "notes": {
+              "minItems": 1,
+              "maxItems": 12,
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/__schema9"
+              }
+            }
+          },
+          "required": [
+            "id",
+            "kind",
+            "duration",
+            "notes"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/definitions/__schema0"
+            },
+            "kind": {
+              "type": "string",
+              "const": "rest"
+            },
+            "duration": {
+              "$ref": "#/definitions/__schema8"
+            }
+          },
+          "required": [
+            "id",
+            "kind",
+            "duration"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "__schema8": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string",
+          "enum": [
+            "whole",
+            "half",
+            "quarter",
+            "eighth",
+            "16th",
+            "32nd"
+          ]
+        },
+        "dots": {
+          "default": 0,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "tuplet": {
+          "type": "object",
+          "properties": {
+            "actual": {
+              "type": "integer",
+              "minimum": 2,
+              "maximum": 16
+            },
+            "normal": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 16
+            }
+          },
+          "required": [
+            "actual",
+            "normal"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "value",
+        "dots"
+      ],
+      "additionalProperties": false
+    },
+    "__schema9": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/__schema0"
+        },
+        "pitch": {
+          "$ref": "#/definitions/__schema4"
+        },
+        "string": {
+          "$ref": "#/definitions/__schema10"
+        },
+        "fret": {
+          "$ref": "#/definitions/__schema11"
+        },
+        "velocity": {
+          "$ref": "#/definitions/__schema12"
+        },
+        "techniques": {
+          "$ref": "#/definitions/__schema13"
+        }
+      },
+      "required": [
+        "id",
+        "pitch",
+        "velocity",
+        "techniques"
+      ],
+      "additionalProperties": false
+    },
+    "__schema10": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 12
+    },
+    "__schema11": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 36
+    },
+    "__schema12": {
+      "default": 96,
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 127
+    },
+    "__schema13": {
+      "default": {
+        "palmMute": false,
+        "letRing": false,
+        "deadNote": false
+      },
+      "type": "object",
+      "properties": {
+        "palmMute": {
+          "default": false,
+          "type": "boolean"
+        },
+        "letRing": {
+          "default": false,
+          "type": "boolean"
+        },
+        "deadNote": {
+          "default": false,
+          "type": "boolean"
+        },
+        "harmonic": {
+          "type": "string",
+          "enum": [
+            "natural",
+            "artificial",
+            "pinch"
+          ]
+        },
+        "vibrato": {
+          "type": "string",
+          "enum": [
+            "slight",
+            "wide"
+          ]
+        },
+        "accent": {
+          "type": "string",
+          "enum": [
+            "normal",
+            "heavy"
+          ]
+        },
+        "bend": {
+          "type": "object",
+          "properties": {
+            "semitones": {
+              "type": "number",
+              "minimum": -12,
+              "maximum": 12
+            }
+          },
+          "required": [
+            "semitones"
+          ],
+          "additionalProperties": false
+        },
+        "tieTo": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/__schema0"
+            }
+          ]
+        },
+        "hammerOnTo": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/__schema0"
+            }
+          ]
+        },
+        "pullOffTo": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/__schema0"
+            }
+          ]
+        },
+        "slideTo": {
+          "type": "object",
+          "properties": {
+            "noteId": {
+              "$ref": "#/definitions/__schema0"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "shift",
+                "legato"
+              ]
+            }
+          },
+          "required": [
+            "noteId",
+            "type"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "palmMute",
+        "letRing",
+        "deadNote"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

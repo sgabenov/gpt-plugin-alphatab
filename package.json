@@ -10,6 +10,8 @@
   },
   "scripts": {
     "sync:assets": "node scripts/sync-alphatab-assets.mjs",
+    "schema:generate": "npm run build:server && node scripts/generate-music-score-schema.mjs",
+    "schema:check": "node scripts/generate-music-score-schema.mjs --check",
     "build": "npm run build:ui && npm run build:server",
     "build:ui": "node scripts/build-ui.mjs",
     "build:server": "tsc -p tsconfig.server.json",
@@ -19,7 +21,7 @@
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.server.json --noEmit",
     "validate:plugin": "node scripts/validate-plugin.mjs",
-    "check": "npm run typecheck && npm test && npm run build && npm run validate:plugin"
+    "check": "npm run typecheck && npm test && npm run build && npm run schema:check && npm run validate:plugin"
   },
   "dependencies": {
     "@coderline/alphatab": "1.8.4",
