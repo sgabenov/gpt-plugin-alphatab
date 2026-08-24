@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "alphatab": {
+    "guitarpro-tab-composer": {
       "command": "node",
       "args": ["dist/server/server.js", "--stdio"]
     }
