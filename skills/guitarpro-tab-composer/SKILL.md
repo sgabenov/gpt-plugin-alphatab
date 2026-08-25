@@ -30,6 +30,7 @@ Use `import_score` for supported Guitar Pro, MusicXML, or alphaTex content. Impo
 
 - Keep data operations separate: create or update the score first, then render the final stored version once.
 - Every successful creation or revision generates persistent `.gp`, `.alphatex`, and `.svg` files internally, even though the initial response shows only the player.
+- Stored score sessions and immutable versions survive MCP and Codex restarts until their explicit `expiresAt` timestamp. Reuse an existing `scoreId` after restart instead of regenerating the score.
 - Do not list, summarize, or attach generated artifacts after `render_score`.
 - The viewer's Send GP and Send SVG actions post explicit export requests into the chat. Follow those requests without regenerating or rerendering the score.
 - Embed SVG exports as an inline Markdown image. Return GP and alphaTex exports as a single clickable Markdown link.

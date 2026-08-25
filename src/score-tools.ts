@@ -5,10 +5,10 @@ import {
   validateMusicScoreSpec
 } from "./music-score-spec/index.js";
 import {
-  InMemoryScoreStore,
   MAX_SCORE_TTL_SECONDS,
   MIN_SCORE_TTL_SECONDS,
   ScoreStoreError,
+  type ScoreStore,
   type StoredScoreVersion
 } from "./score-store.js";
 import {
@@ -92,7 +92,7 @@ function storeErrorResult(error: ScoreStoreError) {
 
 export function registerScoreTools(
   server: McpServer,
-  store: InMemoryScoreStore,
+  store: ScoreStore,
   artifactStore: ScoreArtifactStore
 ): void {
   server.registerTool(

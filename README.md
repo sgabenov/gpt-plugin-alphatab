@@ -4,7 +4,7 @@ An MCP-based ChatGPT Plugin for generating, rendering, playing, importing, and e
 
 ## Project status
 
-The local MVP is implemented. It includes the plugin package, MCP server, MCP Apps UI, the canonical `MusicScoreSpec` v1 contract, deterministic validation and alphaTab compilation, expiring versioned score sessions, Guitar Pro/MusicXML/alphaTex import, Guitar Pro export, notation rendering, and playback controls.
+The local MVP is implemented. It includes the plugin package, MCP server, MCP Apps UI, the canonical `MusicScoreSpec` v1 contract, deterministic validation and alphaTab compilation, persistent expiring versioned score sessions, Guitar Pro/MusicXML/alphaTex import, Guitar Pro and SVG export, notation rendering, and playback controls.
 
 ## Planned workflow
 
@@ -63,7 +63,7 @@ The headless score workflow exposes four MCP tools:
 - `get_score` reads the latest or a selected historical version.
 - `update_score` appends a version only when `expectedVersion` matches the current version and the stable MusicScoreSpec `id` is unchanged.
 
-Sessions default to a one-hour TTL. `create_score` accepts an explicit TTL from 60 seconds to 24 hours and returns the exact `expiresAt` timestamp. Updates do not silently extend the session lifetime. Storage is process-local in this phase, so restarting the MCP server clears all sessions.
+Sessions default to a one-hour TTL. `create_score` accepts an explicit TTL from 60 seconds to 24 hours and returns the exact `expiresAt` timestamp. Updates do not silently extend the session lifetime. Sessions and immutable versions are stored atomically on disk, so an unexpired `scoreId` remains available after the MCP server or Codex restarts. The default data directory is `$XDG_DATA_HOME/guitarpro-tab-composer` or `~/.local/share/guitarpro-tab-composer`; set `GUITARPRO_TAB_DATA_DIR` to override it.
 
 ## MCP tools
 
@@ -104,9 +104,9 @@ To connect from ChatGPT Developer mode, expose `http://127.0.0.1:8787/mcp` throu
 
 ## Current limitations
 
-- Storage is process-local and expires after the selected TTL.
+- Persistent sessions still expire after the selected TTL and are removed lazily when accessed.
 - Import converts the MusicScoreSpec v1 subset. Unsupported source features are reported or rejected rather than silently trusted.
-- The server is intended for a single local user and does not include authentication or durable storage.
+- The server is intended for a single local user and does not include authentication or multi-user isolation.
 - The canonical contract currently focuses on pitched fretted-instrument notation; advanced layout, lyrics, percussion, and exhaustive Guitar Pro techniques remain post-MVP work.
 
 Security, privacy, file limits, and public-deployment requirements are documented in [`docs/security-privacy.md`](docs/security-privacy.md). alphaTab and bundled asset licensing is preserved under [`vendor/alphatab/1.8.4/`](vendor/alphatab/1.8.4/).

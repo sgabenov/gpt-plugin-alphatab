@@ -29,6 +29,13 @@ export interface StoredScoreVersion {
   score: MusicScoreSpecV1;
 }
 
+export interface ScoreStore {
+  readonly defaultTtlSeconds: number;
+  create(score: MusicScoreSpecV1, ttlSeconds?: number): StoredScoreVersion;
+  get(scoreId: string, version?: number): StoredScoreVersion;
+  update(scoreId: string, expectedVersion: number, score: MusicScoreSpecV1): StoredScoreVersion;
+}
+
 export interface InMemoryScoreStoreOptions {
   now?: () => number;
   createId?: () => string;
@@ -41,11 +48,11 @@ interface ScoreSession {
   versions: StoredScoreVersion[];
 }
 
-function copyVersion(version: StoredScoreVersion): StoredScoreVersion {
+export function copyStoredScoreVersion(version: StoredScoreVersion): StoredScoreVersion {
   return structuredClone(version);
 }
 
-function assertTtl(ttlSeconds: number): void {
+export function assertScoreTtl(ttlSeconds: number): void {
   if (
     !Number.isInteger(ttlSeconds) ||
     ttlSeconds < MIN_SCORE_TTL_SECONDS ||
@@ -57,7 +64,7 @@ function assertTtl(ttlSeconds: number): void {
   }
 }
 
-export class InMemoryScoreStore {
+export class InMemoryScoreStore implements ScoreStore {
   private readonly sessions = new Map<string, ScoreSession>();
   private readonly now: () => number;
   private readonly createId: () => string;
@@ -67,11 +74,11 @@ export class InMemoryScoreStore {
     this.now = options.now ?? Date.now;
     this.createId = options.createId ?? (() => randomUUID());
     this.defaultTtlSeconds = options.defaultTtlSeconds ?? DEFAULT_SCORE_TTL_SECONDS;
-    assertTtl(this.defaultTtlSeconds);
+    assertScoreTtl(this.defaultTtlSeconds);
   }
 
   create(score: MusicScoreSpecV1, ttlSeconds = this.defaultTtlSeconds): StoredScoreVersion {
-    assertTtl(ttlSeconds);
+    assertScoreTtl(ttlSeconds);
     const nowMs = this.now();
     const scoreId = this.uniqueOpaqueId();
     const version: StoredScoreVersion = {
@@ -86,7 +93,7 @@ export class InMemoryScoreStore {
       stableScoreId: score.id,
       versions: [version]
     });
-    return copyVersion(version);
+    return copyStoredScoreVersion(version);
   }
 
   get(scoreId: string, version?: number): StoredScoreVersion {
@@ -101,7 +108,7 @@ export class InMemoryScoreStore {
         session.versions.at(-1)?.version
       );
     }
-    return copyVersion(selected);
+    return copyStoredScoreVersion(selected);
   }
 
   update(
@@ -137,7 +144,7 @@ export class InMemoryScoreStore {
       score: structuredClone(score)
     };
     session.versions.push(next);
-    return copyVersion(next);
+    return copyStoredScoreVersion(next);
   }
 
   private activeSession(scoreId: string): ScoreSession {

@@ -8,10 +8,10 @@ import {
 } from "./alphatab-conversion.js";
 import { MusicScoreSpecV1Schema } from "./music-score-spec/index.js";
 import {
-  InMemoryScoreStore,
   MAX_SCORE_TTL_SECONDS,
   MIN_SCORE_TTL_SECONDS,
-  ScoreStoreError
+  ScoreStoreError,
+  type ScoreStore
 } from "./score-store.js";
 import { UI_RESOURCE_URI } from "./ui-resource.js";
 import {
@@ -59,7 +59,7 @@ function toolError(error: unknown) {
   return { isError: true as const, content: textResult(message) };
 }
 
-function storedScore(store: InMemoryScoreStore, scoreId: string, version?: number) {
+function storedScore(store: ScoreStore, scoreId: string, version?: number) {
   try {
     return { success: true as const, value: store.get(scoreId, version) };
   } catch (error) {
@@ -74,7 +74,7 @@ export function scoreDownloadPath(scoreId: string, version: number, format: "gp"
 
 export function registerAlphaTabScoreTools(
   server: McpServer,
-  store: InMemoryScoreStore,
+  store: ScoreStore,
   assetOrigin: string,
   generatedExportStore: InMemoryGeneratedExportStore,
   artifactStore: ScoreArtifactStore

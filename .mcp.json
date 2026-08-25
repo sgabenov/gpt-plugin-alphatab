@@ -11,8 +11,10 @@
         "CODEX_CLI_PATH",
         "CODEX_THREAD_ID",
         "CODEX_ARTIFACTS_DIR",
+        "GUITARPRO_TAB_DATA_DIR",
         "GUITARPRO_TAB_ARTIFACT_DIR",
         "TMPDIR",
+        "XDG_DATA_HOME",
         "XDG_CACHE_HOME",
         "HOME",
         "PATH"

@@ -2,7 +2,7 @@
 
 ## Local data handling
 
-The local MCP server processes MusicScoreSpec documents and imported score files in memory. Score sessions use opaque identifiers, expire after an explicit TTL, and are removed lazily after expiration. Restarting the process clears every session.
+The local MCP server stores validated MusicScoreSpec sessions as private JSON files in `$GUITARPRO_TAB_DATA_DIR`, `$XDG_DATA_HOME/guitarpro-tab-composer`, or `~/.local/share/guitarpro-tab-composer`. Session files are written atomically with owner-only file permissions, use opaque identifiers, preserve immutable versions across process restarts, expire after an explicit TTL, and are removed lazily after expiration. Corrupt or schema-invalid session files are rejected rather than loaded.
 
 The server does not send score content to third-party services. The browser component loads alphaTab, fonts, workers, the audio worklet, and the SoundFont from the configured plugin origin. No public asset CDN is required.
 
@@ -14,7 +14,7 @@ Exports use server-generated filenames and immutable score versions. Dynamic dow
 
 ## Network exposure
 
-The development server binds to `127.0.0.1` by default and has no authentication. Do not expose it directly to an untrusted network. Use an authenticated secure tunnel for remote development access. Authentication, authorization, rate limiting, durable storage, and multi-user isolation are required before a public deployment.
+The development server binds to `127.0.0.1` by default and has no authentication. Do not expose it directly to an untrusted network. Use an authenticated secure tunnel for remote development access. Authentication, authorization, rate limiting, database-backed multi-process storage, and multi-user isolation are required before a public deployment.
 
 ## Privacy and terms
 

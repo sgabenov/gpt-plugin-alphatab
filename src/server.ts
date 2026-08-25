@@ -10,7 +10,8 @@ import {
   GP_MIME_TYPE
 } from "./gp-export.js";
 import { createAlphaTabMcpServer } from "./mcp-server.js";
-import { InMemoryScoreStore, ScoreStoreError } from "./score-store.js";
+import { ScoreStoreError, type ScoreStore } from "./score-store.js";
+import { PersistentScoreStore } from "./persistent-score-store.js";
 import { SCORE_DOWNLOAD_ROUTE_PREFIX } from "./alphatab-tools.js";
 import {
   GENERATED_EXPORT_DOWNLOAD_ROUTE_PREFIX,
@@ -59,7 +60,7 @@ function addPreviewRoute(app: express.Express, assets: string): void {
 
 function addDownloadRoutes(
   app: express.Express,
-  scoreStore: InMemoryScoreStore,
+  scoreStore: ScoreStore,
   generatedExportStore: InMemoryGeneratedExportStore,
   artifactStore: ScoreArtifactStore
 ): void {
@@ -119,7 +120,7 @@ function listen(app: express.Express, port: number, label: string): void {
 
 async function runStdio(): Promise<void> {
   const port = configuredPort();
-  const scoreStore = new InMemoryScoreStore();
+  const scoreStore = new PersistentScoreStore();
   const generatedExportStore = new InMemoryGeneratedExportStore();
   const artifactStore = new ScoreArtifactStore();
   const app = express();
@@ -141,7 +142,7 @@ async function runHttp(): Promise<void> {
   const port = configuredPort();
   const assets = assetBaseUrl(port);
   const app = express();
-  const scoreStore = new InMemoryScoreStore();
+  const scoreStore = new PersistentScoreStore();
   const generatedExportStore = new InMemoryGeneratedExportStore();
   const artifactStore = new ScoreArtifactStore();
   app.use(express.json({ limit: "4mb" }));
