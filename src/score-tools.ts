@@ -11,6 +11,11 @@ import {
   ScoreStoreError,
   type StoredScoreVersion
 } from "./score-store.js";
+import {
+  ScoreArtifactBundleSchema,
+  ScoreArtifactStore,
+  type ScoreArtifactBundle
+} from "./score-artifacts.js";
 
 const ScoreIdSchema = z.string().min(16).max(128);
 const ScoreVersionSchema = z.number().int().positive();
@@ -42,13 +47,31 @@ function textResult(text: string) {
   return [{ type: "text" as const, text }];
 }
 
-function storedResult(version: StoredScoreVersion) {
+function storedResult(
+  version: StoredScoreVersion,
+  artifacts?: ScoreArtifactBundle,
+  artifactWarning?: string
+) {
   return {
-    structuredContent: version,
+    structuredContent: { ...version, artifacts, artifactWarning },
     content: textResult(
-      `Stored score ${version.score.id} as opaque score ID ${version.scoreId}, version ${version.version}; it expires at ${version.expiresAt}.`
+      `Stored score ${version.score.id} as opaque score ID ${version.scoreId}, version ${version.version}; ` +
+      `${artifacts ? "persistent artifacts are ready; " : ""}` +
+      `the score session expires at ${version.expiresAt}.` +
+      (artifactWarning ? ` Artifact warning: ${artifactWarning}` : "")
     )
   };
+}
+
+function materializeArtifacts(
+  artifactStore: ScoreArtifactStore,
+  version: StoredScoreVersion
+): { artifacts?: ScoreArtifactBundle; artifactWarning?: string } {
+  try {
+    return { artifacts: artifactStore.materialize(version) };
+  } catch (error) {
+    return { artifactWarning: error instanceof Error ? error.message : String(error) };
+  }
 }
 
 function storeErrorResult(error: ScoreStoreError) {
@@ -67,7 +90,11 @@ function storeErrorResult(error: ScoreStoreError) {
   };
 }
 
-export function registerScoreTools(server: McpServer, store: InMemoryScoreStore): void {
+export function registerScoreTools(
+  server: McpServer,
+  store: InMemoryScoreStore,
+  artifactStore: ScoreArtifactStore
+): void {
   server.registerTool(
     "validate_score",
     {
@@ -109,7 +136,7 @@ export function registerScoreTools(server: McpServer, store: InMemoryScoreStore)
     {
       title: "Create a versioned score",
       description:
-        "Validate and store a MusicScoreSpec v1 score in an expiring session. Returns an opaque score ID and immutable version 1. For every user request to create, compose, or generate a score, call render_score with the returned scoreId and version before the final response unless the user explicitly requests no inline player.",
+        "Validate and store a MusicScoreSpec v1 score in an expiring session, generate persistent GP, alphaTex, and SVG artifacts, and return an opaque score ID with immutable version 1. For every user request to create, compose, or generate a score, call render_score with the returned scoreId and version before the final response unless the user explicitly requests no inline player.",
       inputSchema: z.object({
         score: MusicScoreSpecV1Schema,
         ttlSeconds: z
@@ -122,7 +149,9 @@ export function registerScoreTools(server: McpServer, store: InMemoryScoreStore)
       outputSchema: z.object({
         status: z.enum(["created", "invalid"]),
         ...OptionalStoredVersionShape,
-        diagnostics: z.array(DiagnosticSchema)
+        diagnostics: z.array(DiagnosticSchema),
+        artifacts: ScoreArtifactBundleSchema.optional(),
+        artifactWarning: z.string().optional()
       }).strict(),
       annotations: {
         readOnlyHint: false,
@@ -145,9 +174,15 @@ export function registerScoreTools(server: McpServer, store: InMemoryScoreStore)
         };
       }
       const version = store.create(validation.score, ttlSeconds);
+      const artifactResult = materializeArtifacts(artifactStore, version);
       return {
-        structuredContent: { status: "created" as const, ...version, diagnostics: validation.diagnostics },
-        content: storedResult(version).content
+        structuredContent: {
+          status: "created" as const,
+          ...version,
+          diagnostics: validation.diagnostics,
+          ...artifactResult
+        },
+        content: storedResult(version, artifactResult.artifacts, artifactResult.artifactWarning).content
       };
     }
   );
@@ -200,7 +235,7 @@ export function registerScoreTools(server: McpServer, store: InMemoryScoreStore)
     {
       title: "Create a new score version",
       description:
-        "Validate and append an immutable score version. The stable MusicScoreSpec score ID must not change, and expectedVersion provides optimistic concurrency. After the final successful revision, call render_score with the returned scoreId and version before the final response unless the user explicitly requests no inline player.",
+        "Validate and append an immutable score version with persistent GP, alphaTex, and SVG artifacts. The stable MusicScoreSpec score ID must not change, and expectedVersion provides optimistic concurrency. After the final successful revision, call render_score with the returned scoreId and version before the final response unless the user explicitly requests no inline player.",
       inputSchema: z.object({
         scoreId: ScoreIdSchema,
         expectedVersion: ScoreVersionSchema,
@@ -211,7 +246,9 @@ export function registerScoreTools(server: McpServer, store: InMemoryScoreStore)
         ...OptionalStoredVersionShape,
         diagnostics: z.array(DiagnosticSchema).optional(),
         message: z.string().optional(),
-        currentVersion: ScoreVersionSchema.optional()
+        currentVersion: ScoreVersionSchema.optional(),
+        artifacts: ScoreArtifactBundleSchema.optional(),
+        artifactWarning: z.string().optional()
       }).strict(),
       annotations: {
         readOnlyHint: false,
@@ -235,9 +272,15 @@ export function registerScoreTools(server: McpServer, store: InMemoryScoreStore)
       }
       try {
         const version = store.update(scoreId, expectedVersion, validation.score);
+        const artifactResult = materializeArtifacts(artifactStore, version);
         return {
-          structuredContent: { status: "updated" as const, ...version, diagnostics: validation.diagnostics },
-          content: storedResult(version).content
+          structuredContent: {
+            status: "updated" as const,
+            ...version,
+            diagnostics: validation.diagnostics,
+            ...artifactResult
+          },
+          content: storedResult(version, artifactResult.artifacts, artifactResult.artifactWarning).content
         };
       } catch (error) {
         if (!(error instanceof ScoreStoreError)) throw error;

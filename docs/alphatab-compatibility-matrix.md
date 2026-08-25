@@ -1,6 +1,6 @@
 # alphaTab Compatibility Matrix
 
-Last verified: 2026-08-24
+Last verified: 2026-08-26
 
 ## Pinned stack
 
@@ -33,7 +33,9 @@ alphaTab documents the GP7 format as mature and well tested, with 98% total feat
 | Host capability | Strategy | Fallback |
 | --- | --- | --- |
 | MCP Apps UI | Standard `ui://` resource and bridge | Headless tools remain usable without UI |
+| MCP Apps display lifecycle | Explicit inline/fullscreen requests plus host-context and size resynchronization | In-place notation retry and inline fallback remain available |
 | ChatGPT file bridge | Feature-detect `uploadFile` and `getFileDownloadUrl` | Browser Blob download |
+| Codex stored-score export | Post an explicit `export_score` request into chat | Server-provided local path is embedded as SVG or linked as GP |
 | Tool-generated file | MCP `resource_link` pointing to the plugin download endpoint | Structured `downloadUrl` in the tool result |
 | Public CDN access | Not required | All alphaTab resources are vendored and served by the plugin |
 
@@ -46,4 +48,3 @@ An alphaTab upgrade must update all of the following in one change:
 3. The vendored runtime, worker, worklet, fonts, SoundFont, licenses, and SHA-256 manifest.
 4. The GP export round-trip test and browser rendering/playback smoke test.
 5. This compatibility matrix.
-

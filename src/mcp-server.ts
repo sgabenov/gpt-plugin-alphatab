@@ -17,11 +17,15 @@ import {
 import { InMemoryScoreStore } from "./score-store.js";
 import { registerScoreTools } from "./score-tools.js";
 import { registerAlphaTabScoreTools } from "./alphatab-tools.js";
+import { InMemoryGeneratedExportStore } from "./generated-export-store.js";
+import { ScoreArtifactStore } from "./score-artifacts.js";
 
 export interface AlphaTabServerOptions {
   uiBundle?: string;
   assetBaseUrl?: string;
   scoreStore?: InMemoryScoreStore;
+  generatedExportStore?: InMemoryGeneratedExportStore;
+  artifactStore?: ScoreArtifactStore;
 }
 
 const demoScoreOutputSchema = {
@@ -46,16 +50,18 @@ export function createAlphaTabMcpServer(options: AlphaTabServerOptions = {}): Mc
   const assetBaseUrl = options.assetBaseUrl ?? process.env.ASSET_BASE_URL ?? "http://127.0.0.1:8787";
   const assetOrigin = buildAssetUrls(assetBaseUrl).origin;
   const scoreStore = options.scoreStore ?? new InMemoryScoreStore();
+  const generatedExportStore = options.generatedExportStore ?? new InMemoryGeneratedExportStore();
+  const artifactStore = options.artifactStore ?? new ScoreArtifactStore();
   const server = new McpServer(
     { name: "guitarpro-tab-composer", version: "0.1.0" },
     {
       instructions:
-        "Translate musical requests into MusicScoreSpec v1 and validate before persistence. For every successful request to create, compose, or generate a score, call create_score and then always call render_score with the returned scoreId and version before the final response, including when export_score is also requested. For revisions, render the final version returned by update_score. Skip inline rendering only when the user explicitly requests no player or asks solely for validation or textual inspection. Use compile_score for deterministic alphaTex inspection, export_score for Guitar Pro or alphaTex downloads, import_score for supported score files, and demo tools only for diagnostics."
+        "Translate musical requests into MusicScoreSpec v1 and validate before persistence. For every successful request to create, compose, or generate a score, call create_score and then always call render_score with the returned scoreId and version. For revisions, render the final version returned by update_score. After a successful render_score, end the turn without a prose response, recap, instructions, or artifact links; the interactive player is the complete visible response. create_score, update_score, and render_score still generate persistent GP, alphaTex, and SVG artifacts for later use. Use export_score only for an explicit export request. For SVG export, reply only with a Markdown image embedding the exact returned localPath. For GP or alphaTex export, reply only with one Markdown link to the exact returned localPath. Skip inline rendering only when the user explicitly requests no player or asks solely for validation or textual inspection. Use compile_score for deterministic alphaTex inspection, import_score for supported score files, and demo tools only for diagnostics."
     }
   );
 
-  registerScoreTools(server, scoreStore);
-  registerAlphaTabScoreTools(server, scoreStore, assetOrigin);
+  registerScoreTools(server, scoreStore, artifactStore);
+  registerAlphaTabScoreTools(server, scoreStore, assetOrigin, generatedExportStore, artifactStore);
 
   server.registerTool(
     "get_demo_score",
@@ -156,11 +162,13 @@ export function createAlphaTabMcpServer(options: AlphaTabServerOptions = {}): Mc
             _meta: {
               ui: {
                 prefersBorder: false,
+                permissions: { clipboardWrite: {} },
                 csp: {
                   connectDomains: [assetOrigin],
                   resourceDomains: [assetOrigin, "blob:"]
                 }
-              }
+              },
+              "openai/widgetDescription": "Interactive alphaTab notation and playback UI. It fully represents the score result; do not add a textual recap or file links after rendering."
             }
           }
         ]

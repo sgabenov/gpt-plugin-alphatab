@@ -11,11 +11,12 @@ import {
 } from "./gp-export.js";
 import { createAlphaTabMcpServer } from "./mcp-server.js";
 import { InMemoryScoreStore, ScoreStoreError } from "./score-store.js";
-import {
-  compileMusicScoreSpec,
-  exportMusicScoreSpecAsGp
-} from "./alphatab-conversion.js";
 import { SCORE_DOWNLOAD_ROUTE_PREFIX } from "./alphatab-tools.js";
+import {
+  GENERATED_EXPORT_DOWNLOAD_ROUTE_PREFIX,
+  InMemoryGeneratedExportStore
+} from "./generated-export-store.js";
+import { ScoreArtifactStore } from "./score-artifacts.js";
 import {
   ALPHATAB_ASSET_ROUTE,
   ALPHATAB_VERSION,
@@ -56,17 +57,12 @@ function addPreviewRoute(app: express.Express, assets: string): void {
   });
 }
 
-function safeDownloadName(title: string, extension: string): string {
-  const stem = title
-    .normalize("NFKD")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 80) || "score";
-  return `${stem}.${extension}`;
-}
-
-function addDownloadRoutes(app: express.Express, scoreStore: InMemoryScoreStore): void {
+function addDownloadRoutes(
+  app: express.Express,
+  scoreStore: InMemoryScoreStore,
+  generatedExportStore: InMemoryGeneratedExportStore,
+  artifactStore: ScoreArtifactStore
+): void {
   app.get(DEMO_GP_DOWNLOAD_ROUTE, (_request, response) => {
     const bytes = exportDemoGp();
     response.setHeader("Content-Type", GP_MIME_TYPE);
@@ -78,26 +74,21 @@ function addDownloadRoutes(app: express.Express, scoreStore: InMemoryScoreStore)
   app.get(`${SCORE_DOWNLOAD_ROUTE_PREFIX}/:scoreId/:version/:format`, (request, response) => {
     const version = Number.parseInt(request.params.version ?? "", 10);
     const format = request.params.format;
-    if (!Number.isSafeInteger(version) || version < 1 || (format !== "gp" && format !== "alphatex")) {
+    if (
+      !Number.isSafeInteger(version) ||
+      version < 1 ||
+      (format !== "gp" && format !== "alphatex" && format !== "svg")
+    ) {
       response.status(400).json({ error: "Invalid score export request." });
       return;
     }
     try {
       const stored = scoreStore.get(request.params.scoreId ?? "", version);
-      const compiled = compileMusicScoreSpec(stored.score);
-      if (!compiled.success) {
-        response.status(422).json({ error: "The stored score could not be compiled." });
-        return;
-      }
-      const isGp = format === "gp";
-      const bytes = isGp
-        ? exportMusicScoreSpecAsGp(stored.score)
-        : new TextEncoder().encode(compiled.payload.alphaTex);
-      const filename = safeDownloadName(compiled.payload.title, isGp ? "gp" : "alphatex");
-      response.setHeader("Content-Type", isGp ? GP_MIME_TYPE : "text/plain; charset=utf-8");
-      response.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      const artifact = artifactStore.materialize(stored)[format];
+      response.setHeader("Content-Type", artifact.mimeType);
+      response.setHeader("Content-Disposition", `attachment; filename="${artifact.filename}"`);
       response.setHeader("Cache-Control", "private, no-store");
-      response.send(Buffer.from(bytes));
+      response.send(Buffer.from(artifactStore.read(artifact)));
     } catch (error) {
       if (error instanceof ScoreStoreError) {
         response.status(404).json({ error: error.message });
@@ -105,6 +96,18 @@ function addDownloadRoutes(app: express.Express, scoreStore: InMemoryScoreStore)
       }
       throw error;
     }
+  });
+
+  app.get(`${GENERATED_EXPORT_DOWNLOAD_ROUTE_PREFIX}/:exportId`, (request, response) => {
+    const item = generatedExportStore.get(request.params.exportId ?? "");
+    if (!item) {
+      response.status(404).json({ error: "The generated export was not found or has expired." });
+      return;
+    }
+    response.setHeader("Content-Type", item.mimeType);
+    response.setHeader("Content-Disposition", `attachment; filename="${item.filename}"`);
+    response.setHeader("Cache-Control", "private, no-store");
+    response.send(Buffer.from(item.bytes));
   });
 }
 
@@ -117,15 +120,19 @@ function listen(app: express.Express, port: number, label: string): void {
 async function runStdio(): Promise<void> {
   const port = configuredPort();
   const scoreStore = new InMemoryScoreStore();
+  const generatedExportStore = new InMemoryGeneratedExportStore();
+  const artifactStore = new ScoreArtifactStore();
   const app = express();
   addAssetRoutes(app);
   addPreviewRoute(app, assetBaseUrl(port));
-  addDownloadRoutes(app, scoreStore);
+  addDownloadRoutes(app, scoreStore, generatedExportStore, artifactStore);
   listen(app, port, "alphaTab local asset server");
 
   const server = createAlphaTabMcpServer({
     assetBaseUrl: assetBaseUrl(port),
-    scoreStore
+    scoreStore,
+    generatedExportStore,
+    artifactStore
   });
   await server.connect(new StdioServerTransport());
 }
@@ -135,10 +142,12 @@ async function runHttp(): Promise<void> {
   const assets = assetBaseUrl(port);
   const app = express();
   const scoreStore = new InMemoryScoreStore();
-  app.use(express.json({ limit: "1mb" }));
+  const generatedExportStore = new InMemoryGeneratedExportStore();
+  const artifactStore = new ScoreArtifactStore();
+  app.use(express.json({ limit: "4mb" }));
   addAssetRoutes(app);
   addPreviewRoute(app, assets);
-  addDownloadRoutes(app, scoreStore);
+  addDownloadRoutes(app, scoreStore, generatedExportStore, artifactStore);
 
   const mcpPath = process.env.MCP_PATH ?? DEFAULT_MCP_PATH;
 
@@ -147,7 +156,12 @@ async function runHttp(): Promise<void> {
   });
 
   app.all(mcpPath, async (request: Request, response: Response) => {
-    const server = createAlphaTabMcpServer({ assetBaseUrl: assets, scoreStore });
+    const server = createAlphaTabMcpServer({
+      assetBaseUrl: assets,
+      scoreStore,
+      generatedExportStore,
+      artifactStore
+    });
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
 
     response.on("close", () => {

@@ -3,7 +3,6 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import {
   compileMusicScoreSpec,
-  exportMusicScoreSpecAsGp,
   importScoreBytes,
   MAX_IMPORT_BYTES
 } from "./alphatab-conversion.js";
@@ -15,6 +14,16 @@ import {
   ScoreStoreError
 } from "./score-store.js";
 import { UI_RESOURCE_URI } from "./ui-resource.js";
+import {
+  generatedExportDownloadPath,
+  InMemoryGeneratedExportStore,
+  MAX_GENERATED_EXPORT_BYTES
+} from "./generated-export-store.js";
+import {
+  ScoreArtifactBundleSchema,
+  ScoreArtifactStore,
+  type ScoreArtifactBundle
+} from "./score-artifacts.js";
 
 export const SCORE_DOWNLOAD_ROUTE_PREFIX = "/downloads/scores";
 
@@ -31,7 +40,14 @@ export const CompiledScorePayloadSchema = z.object({
   timeSignature: z.string(),
   tuning: z.array(z.string()),
   bars: z.number().int().positive(),
-  tracks: z.array(z.object({ id: z.string(), name: z.string() }).strict())
+  tracks: z.array(z.object({ id: z.string(), name: z.string() }).strict()),
+  scoreId: ScoreIdSchema.optional(),
+  version: VersionSchema.optional()
+}).strict();
+
+const RenderedScorePayloadSchema = CompiledScorePayloadSchema.extend({
+  artifacts: ScoreArtifactBundleSchema.optional(),
+  artifactWarning: z.string().optional()
 }).strict();
 
 function textResult(text: string) {
@@ -52,24 +68,16 @@ function storedScore(store: InMemoryScoreStore, scoreId: string, version?: numbe
   }
 }
 
-function safeExportName(title: string, extension: string): string {
-  const stem = title
-    .normalize("NFKD")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 80) || "score";
-  return `${stem}.${extension}`;
-}
-
-export function scoreDownloadPath(scoreId: string, version: number, format: "gp" | "alphatex"): string {
+export function scoreDownloadPath(scoreId: string, version: number, format: "gp" | "alphatex" | "svg"): string {
   return `${SCORE_DOWNLOAD_ROUTE_PREFIX}/${encodeURIComponent(scoreId)}/${version}/${format}`;
 }
 
 export function registerAlphaTabScoreTools(
   server: McpServer,
   store: InMemoryScoreStore,
-  assetOrigin: string
+  assetOrigin: string,
+  generatedExportStore: InMemoryGeneratedExportStore,
+  artifactStore: ScoreArtifactStore
 ): void {
   const storedInput = z.object({
     scoreId: ScoreIdSchema,
@@ -96,7 +104,11 @@ export function registerAlphaTabScoreTools(
       const compiled = compileMusicScoreSpec(stored.value.score);
       if (!compiled.success) return toolError(new Error(compiled.diagnostics.map((item) => item.message).join("; ")));
       return {
-        structuredContent: { ...compiled.payload },
+        structuredContent: {
+          ...compiled.payload,
+          scoreId: stored.value.scoreId,
+          version: stored.value.version
+        },
         content: textResult(`Compiled ${compiled.payload.title} as deterministic alphaTex.`)
       };
     }
@@ -109,7 +121,7 @@ export function registerAlphaTabScoreTools(
       title: "Render and play a stored score",
       description: "Open the final stored score in the inline alphaTab notation and playback component. After every successful create_score request, always call this tool with the returned scoreId and version before the final response, including workflows that also call export_score.",
       inputSchema: storedInput,
-      outputSchema: CompiledScorePayloadSchema,
+      outputSchema: RenderedScorePayloadSchema,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
@@ -127,10 +139,77 @@ export function registerAlphaTabScoreTools(
       if (!stored.success) return toolError(stored.error);
       const compiled = compileMusicScoreSpec(stored.value.score);
       if (!compiled.success) return toolError(new Error(compiled.diagnostics.map((item) => item.message).join("; ")));
+      let artifacts: ScoreArtifactBundle | undefined;
+      let artifactWarning: string | undefined;
+      try {
+        artifacts = artifactStore.materialize(stored.value);
+      } catch (error) {
+        artifactWarning = error instanceof Error ? error.message : String(error);
+      }
       return {
-        structuredContent: { ...compiled.payload },
-        content: textResult(`Rendered ${compiled.payload.title}, version ${stored.value.version}.`)
+        structuredContent: {
+          ...compiled.payload,
+          scoreId: stored.value.scoreId,
+          version: stored.value.version,
+          artifacts,
+          artifactWarning
+        },
+        content: textResult(
+          artifacts
+            ? `Rendered ${compiled.payload.title}, version ${stored.value.version}. The interactive player is the complete user-facing response.`
+            : `Rendered ${compiled.payload.title}, version ${stored.value.version}. Artifact generation failed: ${artifactWarning}`
+        )
       };
+    }
+  );
+
+  registerAppTool(
+    server,
+    "store_svg_export",
+    {
+      title: "Store a rendered SVG export",
+      description: "Temporarily store an SVG generated by the score UI and return a download URL.",
+      inputSchema: z.object({
+        filename: z.string().min(1).max(180),
+        dataBase64: z.string().min(1).max(Math.ceil(MAX_GENERATED_EXPORT_BYTES * 4 / 3) + 8)
+      }).strict(),
+      outputSchema: z.object({
+        filename: z.string(),
+        mimeType: z.literal("image/svg+xml"),
+        downloadUrl: z.string().url(),
+        bytes: z.number().int().positive(),
+        expiresAt: TimestampSchema
+      }).strict(),
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: false
+      },
+      _meta: {
+        ui: { visibility: ["app"] }
+      }
+    },
+    async ({ filename, dataBase64 }) => {
+      const bytes = Uint8Array.from(Buffer.from(dataBase64, "base64"));
+      const prefix = new TextDecoder().decode(bytes.subarray(0, 512));
+      if (!prefix.includes("<svg")) return toolError(new Error("The generated file is not valid SVG markup."));
+      try {
+        const item = generatedExportStore.create(filename, "image/svg+xml", bytes);
+        const downloadUrl = new URL(generatedExportDownloadPath(item.id), assetOrigin).href;
+        return {
+          structuredContent: {
+            filename: item.filename,
+            mimeType: "image/svg+xml" as const,
+            downloadUrl,
+            bytes: item.bytes.byteLength,
+            expiresAt: item.expiresAt
+          },
+          content: textResult(`Stored ${item.filename} temporarily for download.`)
+        };
+      } catch (error) {
+        return toolError(error);
+      }
     }
   );
 
@@ -138,11 +217,14 @@ export function registerAlphaTabScoreTools(
     "export_score",
     {
       title: "Export a stored score",
-      description: "Export a stored score version as Guitar Pro 7+ or alphaTex and return a local download link. This tool does not open the inline player; score-creation workflows must also call render_score before the final response.",
-      inputSchema: storedInput.extend({ format: z.enum(["gp", "alphatex"]) }).strict(),
+      description: "Return a persistent server-generated Guitar Pro 7+, alphaTex, or SVG artifact for a stored score version. This tool does not open the inline player; score-creation workflows must also call render_score before the final response.",
+      inputSchema: storedInput.extend({ format: z.enum(["gp", "alphatex", "svg"]) }).strict(),
       outputSchema: z.object({
+        format: z.enum(["gp", "alphatex", "svg"]),
         filename: z.string(),
         mimeType: z.string(),
+        localPath: z.string(),
+        fileUri: z.string(),
         downloadUrl: z.string().url(),
         bytes: z.number().int().positive(),
         scoreId: ScoreIdSchema,
@@ -158,34 +240,39 @@ export function registerAlphaTabScoreTools(
     async ({ scoreId, version, format }) => {
       const stored = storedScore(store, scoreId, version);
       if (!stored.success) return toolError(stored.error);
-      const compiled = compileMusicScoreSpec(stored.value.score);
-      if (!compiled.success) return toolError(new Error(compiled.diagnostics.map((item) => item.message).join("; ")));
-      const bytes = format === "gp"
-        ? exportMusicScoreSpecAsGp(stored.value.score)
-        : new TextEncoder().encode(compiled.payload.alphaTex);
-      const filename = safeExportName(compiled.payload.title, format === "gp" ? "gp" : "alphatex");
-      const mimeType = format === "gp" ? "application/octet-stream" : "text/plain; charset=utf-8";
+      let artifact;
+      try {
+        artifact = artifactStore.materialize(stored.value)[format];
+      } catch (error) {
+        return toolError(error);
+      }
       const downloadUrl = new URL(
         scoreDownloadPath(scoreId, stored.value.version, format),
         assetOrigin
       ).href;
       return {
         structuredContent: {
-          filename,
-          mimeType,
+          format,
+          filename: artifact.filename,
+          mimeType: artifact.mimeType,
+          localPath: artifact.localPath,
+          fileUri: artifact.fileUri,
           downloadUrl,
-          bytes: bytes.byteLength,
+          bytes: artifact.bytes,
           scoreId,
           version: stored.value.version
         },
-        content: [{
-          type: "resource_link" as const,
-          uri: downloadUrl,
-          name: filename,
-          description: `${format === "gp" ? "Guitar Pro 7+" : "alphaTex"} export for ${compiled.payload.title}.`,
-          mimeType,
-          size: bytes.byteLength
-        }]
+        content: [
+          ...textResult(`Exported ${artifact.filename} to ${artifact.localPath}.`),
+          {
+            type: "resource_link" as const,
+            uri: artifact.fileUri,
+            name: artifact.filename,
+            description: `Persistent ${format} artifact for the stored score version.`,
+            mimeType: artifact.mimeType,
+            size: artifact.bytes
+          }
+        ]
       };
     }
   );

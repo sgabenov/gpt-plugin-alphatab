@@ -21,7 +21,7 @@ export const DEMO_SCORE: DemoScore = Object.freeze({
 \tempo 120
 \track "Electric Guitar"
 \staff {score tabs}
-\tuning (D2 A2 D3 G3 B3 E4)
+\tuning (E4 B3 G3 D3 A2 D2)
 .
 :8 0.6{pm} 0.6{pm} 3.6 5.6 0.6{pm} 0.6{pm} 3.5 5.5 |
 :8 (0.6 2.5) (0.6 2.5) 3.6 5.6 (0.6 2.5) (0.6 2.5) 3.5 5.5 |`

@@ -7,6 +7,8 @@ import { createAlphaTabMcpServer } from "../src/mcp-server.js";
 import { InMemoryScoreStore } from "../src/score-store.js";
 import { UI_RESOURCE_URI } from "../src/ui-resource.js";
 import { compileMusicScoreSpec } from "../src/alphatab-conversion.js";
+import { InMemoryGeneratedExportStore } from "../src/generated-export-store.js";
+import { ScoreArtifactStore } from "../src/score-artifacts.js";
 
 describe("the Phase 0 MCP server", () => {
   const closeCallbacks: Array<() => Promise<void>> = [];
@@ -15,11 +17,17 @@ describe("the Phase 0 MCP server", () => {
     await Promise.all(closeCallbacks.splice(0).map((close) => close()));
   });
 
-  async function connect(scoreStore?: InMemoryScoreStore) {
+  async function connect(
+    scoreStore?: InMemoryScoreStore,
+    generatedExportStore?: InMemoryGeneratedExportStore,
+    artifactStore?: ScoreArtifactStore
+  ) {
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
     const server = createAlphaTabMcpServer({
       uiBundle: 'console.log("test UI");',
-      scoreStore
+      scoreStore,
+      generatedExportStore,
+      artifactStore
     });
     const client = new Client({ name: "alphatab-test-client", version: "0.1.0" });
 
@@ -44,6 +52,7 @@ describe("the Phase 0 MCP server", () => {
       "update_score",
       "compile_score",
       "render_score",
+      "store_svg_export",
       "export_score",
       "import_score",
       "get_demo_score",
@@ -55,6 +64,9 @@ describe("the Phase 0 MCP server", () => {
     const scoreRenderTool = tools.tools.find((tool) => tool.name === "render_score");
     expect(scoreRenderTool?._meta?.ui).toEqual({ resourceUri: UI_RESOURCE_URI });
     expect(scoreRenderTool?.description).toContain("After every successful create_score request");
+    expect(tools.tools.find((tool) => tool.name === "store_svg_export")?._meta?.ui).toEqual({
+      visibility: ["app"]
+    });
     expect(tools.tools.find((tool) => tool.name === "create_score")?.description).toContain(
       "call render_score"
     );
@@ -76,12 +88,45 @@ describe("the Phase 0 MCP server", () => {
     }
   });
 
+  it("stores SVG exports through an app-only tool", async () => {
+    const exportStore = new InMemoryGeneratedExportStore({
+      now: () => Date.parse("2026-08-25T12:00:00.000Z"),
+      createId: () => "temporary-svg-export"
+    });
+    const client = await connect(undefined, exportStore);
+    const result = await client.callTool({
+      name: "store_svg_export",
+      arguments: {
+        filename: "test score.svg",
+        dataBase64: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>').toString("base64")
+      }
+    });
+
+    expect(result.isError).not.toBe(true);
+    expect(result.structuredContent).toMatchObject({
+      filename: "test-score.svg",
+      mimeType: "image/svg+xml",
+      downloadUrl: "http://127.0.0.1:8787/downloads/generated/temporary-svg-export",
+      expiresAt: "2026-08-25T13:00:00.000Z"
+    });
+    expect(new TextDecoder().decode(exportStore.get("temporary-svg-export")?.bytes)).toContain("<svg");
+  });
+
   it("creates, versions, and retrieves a score through strict headless tools", async () => {
     const store = new InMemoryScoreStore({
       now: () => Date.parse("2026-08-24T12:00:00.000Z"),
       createId: () => "opaque-mcp-score-00000001"
     });
-    const client = await connect(store);
+    const artifactDirectory = resolve("test", ".tmp-artifacts");
+    const client = await connect(
+      store,
+      undefined,
+      new ScoreArtifactStore({ rootDirectory: artifactDirectory })
+    );
+    closeCallbacks.push(async () => {
+      const { rm } = await import("node:fs/promises");
+      await rm(artifactDirectory, { recursive: true, force: true });
+    });
     const score = JSON.parse(
       readFileSync(resolve("test", "fixtures", "music-score-v1-valid.json"), "utf8")
     );
@@ -95,8 +140,16 @@ describe("the Phase 0 MCP server", () => {
       status: "created",
       scoreId: "opaque-mcp-score-00000001",
       version: 1,
-      expiresAt: "2026-08-24T12:02:00.000Z"
+      expiresAt: "2026-08-24T12:02:00.000Z",
+      artifacts: {
+        gp: { filename: "drop-d-study.gp" },
+        alphatex: { filename: "drop-d-study.alphatex" },
+        svg: { filename: "drop-d-study.svg" }
+      }
     });
+    expect(created.content).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: "resource_link" })
+    ]));
 
     const compiled = await client.callTool({
       name: "compile_score",
@@ -105,14 +158,24 @@ describe("the Phase 0 MCP server", () => {
     expect(compiled.structuredContent).toMatchObject({
       id: "drop-d-study",
       format: "alphatex",
-      bars: 1
+      bars: 1,
+      scoreId: "opaque-mcp-score-00000001",
+      version: 1
     });
 
     const rendered = await client.callTool({
       name: "render_score",
       arguments: { scoreId: "opaque-mcp-score-00000001" }
     });
-    expect(rendered.structuredContent).toMatchObject({ id: "drop-d-study" });
+    expect(rendered.structuredContent).toMatchObject({
+      id: "drop-d-study",
+      scoreId: "opaque-mcp-score-00000001",
+      version: 1,
+      artifacts: { svg: { mimeType: "image/svg+xml" } }
+    });
+    expect(rendered.content).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: "resource_link" })
+    ]));
 
     const exported = await client.callTool({
       name: "export_score",
@@ -120,8 +183,22 @@ describe("the Phase 0 MCP server", () => {
     });
     expect(exported.structuredContent).toMatchObject({
       filename: "drop-d-study.gp",
+      format: "gp",
+      localPath: expect.stringContaining("drop-d-study.gp"),
+      fileUri: expect.stringMatching(/^file:\/\//),
       scoreId: "opaque-mcp-score-00000001",
       version: 1
+    });
+
+    const exportedSvg = await client.callTool({
+      name: "export_score",
+      arguments: { scoreId: "opaque-mcp-score-00000001", format: "svg" }
+    });
+    expect(exportedSvg.structuredContent).toMatchObject({
+      filename: "drop-d-study.svg",
+      format: "svg",
+      mimeType: "image/svg+xml",
+      localPath: expect.stringContaining("drop-d-study.svg")
     });
 
     score.metadata.title = "Updated through MCP";
@@ -254,9 +331,13 @@ describe("the Phase 0 MCP server", () => {
     expect(resource?.mimeType).toBe("text/html;profile=mcp-app");
     expect(resource.text).toContain("test UI");
     expect(resource._meta?.ui).toMatchObject({
+      permissions: { clipboardWrite: {} },
       csp: {
         resourceDomains: ["http://127.0.0.1:8787", "blob:"]
       }
     });
+    expect(resource._meta?.["openai/widgetDescription"]).toContain(
+      "do not add a textual recap or file links"
+    );
   });
 });

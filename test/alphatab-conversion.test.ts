@@ -30,6 +30,9 @@ describe("MusicScoreSpec alphaTab conversion", () => {
       timeSignature: "4/4",
       bars: 1
     });
+    expect(first.payload.tuning).toEqual(["D2", "A2", "D3", "G3", "B3", "E4"]);
+    expect(first.payload.alphaTex).toContain("\\tuning (E4 B3 G3 D3 A2 D2)");
+    expect(first.payload.alphaTex).toContain("(0.6{pm} 0.5)");
     expect(first.nativeScore.tracks[0]?.staves[0]?.bars).toHaveLength(1);
   });
 

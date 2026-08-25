@@ -1,6 +1,6 @@
 # Phase 0 Runtime Constraints
 
-Last verified: 2026-08-24
+Last verified: 2026-08-26
 
 ## Content security policy
 
@@ -26,6 +26,8 @@ Playback never starts automatically. The user must click Play/Pause because Web 
 
 The UI reports SoundFont loading progress, exposes renderer errors, and calls `AlphaTabApi.destroy()` on both `beforeunload` and `pagehide`.
 
+The inline host lifecycle is handled separately from alphaTab rendering. The component reports its stable inline height through the MCP Apps size bridge, refreshes display mode after host focus and visibility changes, and ignores nested tool results that are not score payloads. A 30-second notation timeout exposes an in-place retry instead of leaving the loading overlay indefinitely.
+
 ## Guitar Pro file delivery
 
 alphaTab 1.8.4 provides `Gp7Exporter`, which serializes a score to a `Uint8Array`: [alphaTab exporter guide](https://www.alphatab.net/docs/guides/exporter).
@@ -34,7 +36,8 @@ Phase 0 implements three delivery paths:
 
 1. `export_demo_gp` returns an MCP `resource_link` plus a structured download URL.
 2. The plugin server serves the deterministic `.gp` bytes with an attachment content disposition.
-3. The UI Export GP button feature-detects ChatGPT `uploadFile` and `getFileDownloadUrl`; if either is unavailable or fails, it downloads the generated Blob locally.
+3. For stored scores in Codex, the SVG and GP buttons send an exact `export_score` follow-up request into the chat instead of navigating the sandboxed iframe. The assistant embeds the returned SVG `localPath` as one Markdown image or returns the GP `localPath` as one Markdown link.
+4. Standalone preview mode retains host file-bridge and browser object-URL fallbacks for development diagnostics.
 
 ChatGPT documents its file upload/download helpers as optional extensions, so the component does not assume they exist: [OpenAI file APIs](https://developers.openai.com/plugins/reference#file-apis).
 
@@ -49,4 +52,3 @@ Before public deployment:
 - serve the MCP endpoint, assets, and download endpoint over HTTPS;
 - repeat the CSP, playback, and file-download checks inside ChatGPT itself;
 - keep the browser Blob path as the portable MCP Apps fallback.
-

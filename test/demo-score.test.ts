@@ -7,6 +7,7 @@ describe("the Phase 0 demo score", () => {
     expect(DEMO_SCORE.id).toBe("phase-0-drop-d-riff");
     expect(DEMO_SCORE.bars).toBe(2);
     expect(DEMO_SCORE.alphaTex).toContain('\\staff {score tabs}');
+    expect(DEMO_SCORE.alphaTex).toContain('\\tuning (E4 B3 G3 D3 A2 D2)');
     expect(DEMO_SCORE.alphaTex.split("|")).toHaveLength(3);
   });
 

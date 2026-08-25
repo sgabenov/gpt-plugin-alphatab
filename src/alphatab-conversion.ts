@@ -33,6 +33,8 @@ export interface CompiledScorePayload {
   tuning: string[];
   bars: number;
   tracks: Array<{ id: string; name: string }>;
+  scoreId?: string;
+  version?: number;
 }
 
 export type ScoreCompilationResult =
@@ -100,7 +102,6 @@ function withProperties(value: string, properties: string[]): string {
 
 function eventText(
   event: MusicScoreSpecV1["tracks"][number]["bars"][number]["voices"][number]["events"][number],
-  stringCount: number,
   tieDestinations: Set<string>,
   tempo?: number
 ): string {
@@ -110,7 +111,7 @@ function eventText(
 
   const notes = event.notes.map((note) => {
     const value = note.string !== undefined && note.fret !== undefined
-      ? `${note.fret}.${stringCount - note.string + 1}`
+      ? `${note.fret}.${note.string}`
       : pitchText(note.pitch);
     return withProperties(value, noteProperties(note, tieDestinations));
   });
@@ -193,7 +194,7 @@ function compileAlphaTex(score: MusicScoreSpecV1): string {
     lines.push(`\\instrument ${track.instrument.midiProgram}`);
     lines.push("\\staff {score tabs}");
     lines.push(`\\tuning (${[...track.tuning]
-      .sort((left, right) => right.string - left.string)
+      .sort((left, right) => left.string - right.string)
       .map((entry) => pitchText(entry.pitch))
       .join(" ")})`);
     if (track.capo > 0) lines.push(`\\capo ${track.capo}`);
@@ -208,7 +209,7 @@ function compileAlphaTex(score: MusicScoreSpecV1): string {
         const offsets = eventOffsets(voice.events);
         const events = voice.events.map((event, index) => {
           const tempo = tempoByPosition.get(`${bar.id}:${offsets[index]}`);
-          return eventText(event, track.tuning.length, tieDestinations, tempo);
+          return eventText(event, tieDestinations, tempo);
         });
         lines.push(`\\ts (${bar.timeSignature.numerator} ${bar.timeSignature.denominator}) ${events.join(" ")} |`);
       }

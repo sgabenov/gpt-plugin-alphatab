@@ -71,10 +71,10 @@ Sessions default to a one-hour TTL. `create_score` accepts an explicit TTL from 
 - `compile_score` returns deterministic alphaTex for a stored version.
 - `render_score` opens a stored version in the interactive notation and playback component.
 - `import_score` accepts Guitar Pro, MusicXML, or alphaTex data up to 5 MB.
-- `export_score` returns a local Guitar Pro 7+ or alphaTex download link.
+- `export_score` returns a persistent local Guitar Pro 7+, alphaTex, or SVG artifact for an exact stored version.
 - `get_demo_score`, `render_demo_score`, and `export_demo_gp` remain deterministic diagnostics for the original Phase 0 fixture.
 
-The viewer supports track selection, play/pause/stop, playback tempo, looping, metronome, mute, solo, fullscreen requests, score import, and Guitar Pro download. Playback uses alphaTab's default master volume, and users can select a playback position directly in the rendered score.
+The viewer supports track selection, play/pause/stop, playback speed, count-in, looping, metronome, mute, solo, fullscreen requests, score import, notation/layout/scale controls, and explicit SVG or Guitar Pro export requests. In an MCP Apps host, export buttons post a precise request back into the chat: SVG is embedded as an image and Guitar Pro is returned as one local file link. The player ignores unrelated nested tool results, retries stalled notation rendering, and resynchronizes its inline size and display mode after host lifecycle changes. Playback uses alphaTab's default master volume, and users can select a playback position directly in the rendered score.
 
 ## Local connection
 
