@@ -1,123 +1,219 @@
 # GuitarPro Tab Composer
 
-An MCP-based ChatGPT Plugin for generating, rendering, playing, importing, and exporting Guitar Pro music notation and tablature with [alphaTab](https://www.alphatab.net/).
+[![CI](https://github.com/sgabenov/gpt-plugin-guitarpro-tab-composer/actions/workflows/ci.yml/badge.svg)](https://github.com/sgabenov/gpt-plugin-guitarpro-tab-composer/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+GuitarPro Tab Composer is a local Codex plugin that turns natural-language music requests into validated, playable notation and guitar tablature. It combines an MCP server, a reusable Skill, and an inline [alphaTab](https://www.alphatab.net/) player.
+
+![GuitarPro Tab Composer rendering a chromatic guitar warm-up](docs/images/guitarpro-tab-composer-player.png)
+
+## What it does
+
+- Generates structured guitar and fretted-instrument scores from conversational requests.
+- Validates rhythm, pitches, tuning, entity IDs, and cross-score references before storing a score.
+- Renders standard notation and tablature inside the conversation.
+- Plays scores with track, tempo, loop, metronome, mute, and solo controls.
+- Imports Guitar Pro, MusicXML, and alphaTex files up to 5 MB.
+- Exports Guitar Pro 7+, alphaTex, and SVG artifacts.
+- Preserves immutable score versions across MCP and Codex restarts until the session expires.
+
+## How it works
+
+```text
+Natural-language request
+        |
+        v
+GuitarPro Tab Composer Skill
+        |
+        v
+MusicScoreSpec v1 -> validation -> versioned score session
+        |                              |
+        v                              v
+alphaTab renderer/player          GP / alphaTex / SVG
+```
+
+The model creates a `MusicScoreSpec` v1 document instead of writing a binary Guitar Pro file directly. The MCP server validates and stores the document, compiles it to alphaTex, generates persistent artifacts, and returns the final score to the inline player.
 
 ## Project status
 
-The local MVP is implemented. It includes the plugin package, MCP server, MCP Apps UI, the canonical `MusicScoreSpec` v1 contract, deterministic validation and alphaTab compilation, persistent expiring versioned score sessions, Guitar Pro/MusicXML/alphaTex import, Guitar Pro and SVG export, notation rendering, and playback controls.
+The local MVP is complete and intended for a single local user. The repository includes the plugin manifest, MCP tools, MCP Apps UI, persistent expiring score storage, import/export support, vendored alphaTab browser assets, and automated tests.
 
-## Planned workflow
+Public marketplace deployment is not included. A public release would require a hosted HTTPS MCP endpoint, authentication or anonymous-session isolation, rate limiting, multi-user storage, and public privacy and terms pages. See [Security and privacy](docs/security-privacy.md).
 
-1. ChatGPT translates a natural-language musical request into strict structured score data.
-2. The MCP server validates and compiles that data into an alphaTab-compatible score.
-3. The MCP Apps UI renders standard notation and tablature and provides playback controls.
-4. The server imports and exports supported formats, including Guitar Pro 7+ `.gp`.
-
-## Development
-
-Requirements:
+## Requirements
 
 - Node.js 20 or newer
 - npm
-- Python 3 for plugin manifest validation
+- Python 3 for the plugin manifest validator
+- Codex with local plugin support for the complete inline experience
 
-Install and verify:
+## Quick start
 
 ```bash
-npm install
+git clone https://github.com/sgabenov/gpt-plugin-guitarpro-tab-composer.git
+cd gpt-plugin-guitarpro-tab-composer
+npm ci
 npm run sync:assets
 npm run check
 ```
 
-## Vendored alphaTab resources
-
-The repository stores the pinned alphaTab 1.8.4 browser runtime, worker and worklet modules, Bravura notation fonts, Sonivox SoundFont, upstream licenses, and a SHA-256 manifest under `vendor/alphatab/1.8.4/`. The UI does not depend on a public CDN.
-
-Run `npm run sync:assets` after installing dependencies whenever the pinned alphaTab package is updated. The build copies these resources to `dist/assets/alphatab/1.8.4/`, and the local server exposes them under `/assets/alphatab/1.8.4/`.
-
-For a deployed server, set `ASSET_BASE_URL` to its public HTTPS origin so the ChatGPT component can load the runtime, fonts, worker, worklet, and SoundFont from that server.
-
-Run the local Streamable HTTP MCP endpoint and asset server:
+Start the local Streamable HTTP MCP server and asset host:
 
 ```bash
 npm run dev
 ```
 
-The endpoint defaults to `http://localhost:8787/mcp`.
+The default endpoints are:
 
-Open `http://localhost:8787/preview` to run the same score component with the deterministic Phase 0 fixture outside an MCP host. This route is intended for local rendering and playback smoke tests.
+- MCP: `http://127.0.0.1:8787/mcp`
+- standalone player preview: `http://127.0.0.1:8787/preview`
 
-The recorded Phase 0 browser results are available in [`docs/phase-0-rendering-playback-spike.md`](docs/phase-0-rendering-playback-spike.md).
+The preview route uses a deterministic fixture and is useful for checking notation, layout, alphaTab assets, and browser audio before testing the plugin host integration.
 
-Runtime constraints and the pinned support matrix are documented in:
+## Install as a local Codex plugin
 
-- [`docs/phase-0-runtime-constraints.md`](docs/phase-0-runtime-constraints.md)
-- [`docs/alphatab-compatibility-matrix.md`](docs/alphatab-compatibility-matrix.md)
+The repository is structured as a Codex plugin: [`.codex-plugin/plugin.json`](.codex-plugin/plugin.json) describes the plugin and [`.mcp.json`](.mcp.json) launches the local stdio server.
 
-The canonical Phase 1 score contract is documented in [`docs/music-score-spec-v1.md`](docs/music-score-spec-v1.md) and published as [`schemas/music-score-spec-v1.schema.json`](schemas/music-score-spec-v1.schema.json).
+Add the repository directory to a configured local marketplace, then install it with the marketplace name:
 
-The headless score workflow exposes four MCP tools:
+```bash
+codex plugin add gpt-plugin-guitarpro-tab-composer@personal
+```
 
-- `validate_score` validates a score without storing it.
-- `create_score` creates an expiring session with an opaque score ID and immutable version 1.
-- `get_score` reads the latest or a selected historical version.
-- `update_score` appends a version only when `expectedVersion` matches the current version and the stable MusicScoreSpec `id` is unchanged.
+After an update, reinstall the plugin and start a new Codex task so the refreshed Skill, MCP tools, UI, and static resources are loaded.
 
-Sessions default to a one-hour TTL. `create_score` accepts an explicit TTL from 60 seconds to 24 hours and returns the exact `expiresAt` timestamp. Updates do not silently extend the session lifetime. Sessions and immutable versions are stored atomically on disk, so an unexpired `scoreId` remains available after the MCP server or Codex restarts. The default data directory is `$XDG_DATA_HOME/guitarpro-tab-composer` or `~/.local/share/guitarpro-tab-composer`; set `GUITARPRO_TAB_DATA_DIR` to override it.
+## Example prompts
+
+- `Create an eight-bar Drop D metal riff at 140 BPM.`
+- `Write a ten-bar chromatic warm-up for guitar.`
+- `Create a four-bar fingerstyle study in 6/8 with a repeating bass line.`
+- `Import this MusicXML score and show the guitar part.`
+- `Change the final bar while preserving the existing score.`
+
+Score creation opens the inline player as the complete response. GP, alphaTex, and SVG files are exposed only when the user explicitly requests an export or uses an export action in the player.
+
+## Player controls
+
+The inline component provides:
+
+- play, pause, and stop;
+- playback speed, count-in, loop, and metronome;
+- track selection, mute, and solo;
+- standard notation, tablature, or combined views;
+- layout and scale settings;
+- fullscreen requests;
+- score import;
+- explicit Guitar Pro and SVG export requests.
+
+The player uses alphaTab's default master volume. A playback position can be selected directly in the rendered score.
 
 ## MCP tools
 
-- `validate_score`, `create_score`, `get_score`, and `update_score` manage validated immutable score versions.
-- `compile_score` returns deterministic alphaTex for a stored version.
-- `render_score` opens a stored version in the interactive notation and playback component.
-- `import_score` accepts Guitar Pro, MusicXML, or alphaTex data up to 5 MB.
-- `export_score` returns a persistent local Guitar Pro 7+, alphaTex, or SVG artifact for an exact stored version.
-- `get_demo_score`, `render_demo_score`, and `export_demo_gp` remain deterministic diagnostics for the original Phase 0 fixture.
+| Tool | Purpose |
+| --- | --- |
+| `validate_score` | Validate MusicScoreSpec without storing it. |
+| `create_score` | Create version 1 of an expiring score session. |
+| `get_score` | Retrieve the latest or an immutable historical version. |
+| `update_score` | Append a version with optimistic concurrency control. |
+| `compile_score` | Compile a stored version to deterministic alphaTex. |
+| `render_score` | Open the stored score in the inline player. |
+| `import_score` | Import supported Guitar Pro, MusicXML, or alphaTex content. |
+| `export_score` | Return the GP, alphaTex, or SVG artifact for an exact version. |
 
-The viewer supports track selection, play/pause/stop, playback speed, count-in, looping, metronome, mute, solo, fullscreen requests, score import, notation/layout/scale controls, and explicit SVG or Guitar Pro export requests. In an MCP Apps host, export buttons post a precise request back into the chat: SVG is embedded as an image and Guitar Pro is returned as one local file link. The player ignores unrelated nested tool results, retries stalled notation rendering, and resynchronizes its inline size and display mode after host lifecycle changes. Playback uses alphaTab's default master volume, and users can select a playback position directly in the rendered score.
+The deterministic demo tools remain available for diagnostics and regression testing.
 
-## Local connection
+## Score sessions and artifacts
 
-Run the stdio transport used by the local plugin configuration:
+Sessions default to a one-hour TTL. Callers can select a TTL from 60 seconds to 24 hours. Updates preserve the original expiry and append immutable versions rather than replacing previous data.
+
+The default data directory is:
+
+```text
+$XDG_DATA_HOME/guitarpro-tab-composer
+```
+
+or, when `XDG_DATA_HOME` is not set:
+
+```text
+~/.local/share/guitarpro-tab-composer
+```
+
+Set `GUITARPRO_TAB_DATA_DIR` and `GUITARPRO_TAB_ARTIFACT_DIR` to override score and artifact locations.
+
+## Vendored alphaTab resources
+
+The browser runtime does not depend on a public CDN. The pinned alphaTab 1.8.4 runtime, worker, worklet, Bravura fonts, Sonivox SoundFont, upstream licenses, and SHA-256 manifest live under [`vendor/alphatab/1.8.4`](vendor/alphatab/1.8.4/).
+
+After changing the alphaTab dependency, refresh and verify the vendored files:
+
+```bash
+npm run sync:assets
+npm run check
+```
+
+For an HTTPS deployment, set `ASSET_BASE_URL` to the public asset origin used by the iframe CSP.
+
+## Build and package
+
+Build the UI and server:
 
 ```bash
 npm run build
-npm run start:stdio
 ```
 
-The included [`.mcp.json`](.mcp.json) starts this command when the repository is installed as a local Codex plugin. Start a new task after installing or updating the plugin so Codex reloads its Skill and MCP tools.
-
-To test the Streamable HTTP endpoint directly, run MCP Inspector:
+Create an npm-compatible release archive:
 
 ```bash
-npx @modelcontextprotocol/inspector@latest
+npm run package:plugin
 ```
 
-To connect from ChatGPT Developer mode, expose `http://127.0.0.1:8787/mcp` through OpenAI Secure MCP Tunnel or another HTTPS development tunnel, then add that endpoint under ChatGPT Plugins. Do not expose the unauthenticated local server directly to an untrusted network.
+The archive is written to `artifacts/gpt-plugin-guitarpro-tab-composer-<version>.tgz`. The packaging command builds the project and verifies that the manifest, MCP configuration, Skill, compiled server/UI, launcher, icons, and vendored alphaTab runtime are present.
 
-## Example requests
+This archive is intended as a GitHub release or local distribution artifact; the package remains private and is not configured for publication to the npm registry. After extracting it, run `npm install --omit=dev` before registering its directory in a Codex marketplace.
 
-- “Create an eight-bar Drop D metal riff at 140 BPM, render it, and export Guitar Pro.”
-- “Write a four-bar fingerstyle study in 6/8 with a repeating bass line.”
-- “Import this MusicXML score, show the guitar part, and export it as Guitar Pro.”
-- “Change the last bar while preserving the existing notes' stable IDs.”
+## Development commands
+
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Watch and run the HTTP MCP server. |
+| `npm run start:stdio` | Run the stdio transport used by the local plugin. |
+| `npm run lint` | Check repository formatting and generated-file rules. |
+| `npm run typecheck` | Type-check the UI and server. |
+| `npm test` | Run the complete Vitest suite. |
+| `npm run test:ui` | Run focused production UI tests. |
+| `npm run schema:check` | Verify the generated JSON Schema. |
+| `npm run validate:plugin` | Validate the local plugin manifest. |
+| `npm run package:check` | Dry-run package creation and verify required contents. |
+| `npm run check` | Run the complete local verification pipeline. |
+
+## Documentation
+
+- [MusicScoreSpec v1](docs/music-score-spec-v1.md)
+- [alphaTab compatibility matrix](docs/alphatab-compatibility-matrix.md)
+- [Runtime constraints](docs/phase-0-runtime-constraints.md)
+- [Rendering and playback spike](docs/phase-0-rendering-playback-spike.md)
+- [Security and privacy](docs/security-privacy.md)
+- [Generated JSON Schema](schemas/music-score-spec-v1.schema.json)
 
 ## Current limitations
 
-- Persistent sessions still expire after the selected TTL and are removed lazily when accessed.
-- Import converts the MusicScoreSpec v1 subset. Unsupported source features are reported or rejected rather than silently trusted.
-- The server is intended for a single local user and does not include authentication or multi-user isolation.
-- The canonical contract currently focuses on pitched fretted-instrument notation; advanced layout, lyrics, percussion, and exhaustive Guitar Pro techniques remain post-MVP work.
+- The server is designed for a single local user and has no authentication or multi-user isolation.
+- Sessions expire after their selected TTL and are removed lazily when accessed.
+- Import preserves the supported MusicScoreSpec subset; unsupported source features are reported or rejected.
+- The score contract focuses on pitched fretted instruments. Advanced layout, lyrics, percussion, and exhaustive Guitar Pro techniques are outside the current MVP.
+- Browser audio still requires a user gesture, so playback cannot start automatically.
 
-Security, privacy, file limits, and public-deployment requirements are documented in [`docs/security-privacy.md`](docs/security-privacy.md). alphaTab and bundled asset licensing is preserved under [`vendor/alphatab/1.8.4/`](vendor/alphatab/1.8.4/).
-
-## Repository language
+## Repository policy
 
 All source code, identifiers, documentation, issues, pull requests, commit messages, and developer-facing output must be written in English.
 
+## License
+
+Project code is released under the [MIT License](LICENSE). Bundled alphaTab, Bravura, and SoundFont assets retain their upstream licenses under [`vendor/alphatab/1.8.4`](vendor/alphatab/1.8.4/).
+
 ## References
 
-- [OpenAI Plugin architecture](https://developers.openai.com/plugins/concepts/plugins)
+- [OpenAI plugin architecture](https://developers.openai.com/plugins/concepts/plugins)
 - [OpenAI MCP server guide](https://developers.openai.com/plugins/build/mcp-server)
 - [OpenAI MCP Apps UI guide](https://developers.openai.com/plugins/build/chatgpt-ui)
 - [alphaTab documentation](https://www.alphatab.net/docs/introduction)

@@ -27,3 +27,4 @@ jobs:
       - run: npm run test:ui
       - run: npm run schema:check
       - run: npm run validate:plugin
+      - run: npm run package:check

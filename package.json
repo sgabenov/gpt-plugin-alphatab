@@ -2,6 +2,17 @@
   "name": "gpt-plugin-guitarpro-tab-composer",
   "version": "0.1.0",
   "private": true,
+  "files": [
+    ".codex-plugin/",
+    ".mcp.json",
+    "assets/",
+    "dist/",
+    "docs/",
+    "schemas/",
+    "scripts/launch-guitarpro-tab-composer-mcp",
+    "skills/",
+    "vendor/"
+  ],
   "type": "module",
   "description": "ChatGPT Plugin for generating, rendering, playing, importing, and exporting music notation with alphaTab.",
   "license": "MIT",
@@ -23,6 +34,9 @@
     "lint": "node scripts/lint-repository.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.server.json --noEmit",
     "validate:plugin": "node scripts/validate-plugin.mjs",
+    "package:check": "node scripts/package-plugin.mjs --dry-run",
+    "package:plugin": "node scripts/package-plugin.mjs",
+    "prepack": "npm run build && npm run schema:check && npm run validate:plugin",
     "check": "npm run lint && npm run typecheck && npm run build && npm test && npm run schema:check && npm run validate:plugin"
   },
   "dependencies": {
